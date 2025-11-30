@@ -19,6 +19,31 @@ def init_db() -> None:
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE room
+                    ADD COLUMN IF NOT EXISTS primary_trainer_id INTEGER REFERENCES trainer(trainer_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE class_schedule
+                    ADD COLUMN IF NOT EXISTS price NUMERIC(8,2) DEFAULT 50;
+                """
+            )
+        )
+        # Ensure the health_metric timestamp column always defaults to now()
+        conn.execute(
+            text(
+                """
+                ALTER TABLE health_metric
+                    ALTER COLUMN "timestamp" SET DEFAULT NOW();
+                """
+            )
+        )
 
         conn.execute(
             text(
@@ -70,9 +95,7 @@ def init_db() -> None:
                     m.notes,
                     m.last_metric_at,
                     hm.weight,
-                    hm.height,
                     hm.heart_rate,
-                    hm.body_fat_pct,
                     hm.timestamp AS metric_timestamp
                 FROM member m
                 LEFT JOIN LATERAL (

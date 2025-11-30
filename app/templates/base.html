@@ -26,6 +26,40 @@
       padding: 1.5rem;
     }
 
+    .card table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      background-color: #fff;
+    }
+
+    .card table thead {
+      background-color: #eef2f7;
+    }
+
+    .card table th,
+    .card table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 1.05rem;
+      text-align: center;
+      vertical-align: middle;
+      white-space: normal;
+      word-break: normal;
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+
+    .card table th {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .card .table-responsive,
+    .card .table-wrapper {
+      padding: 1rem 1rem 0;
+    }
+
     .section-title {
       font-size: 1.25rem;
       font-weight: 600;
@@ -153,7 +187,7 @@
 <body class="bg-light">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('index') }}">Fitness Club</a>
+    <a class="navbar-brand" href="{{ url_for('login') }}">Fitness Club</a>
 
     <!-- mobile toggler -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -172,12 +206,6 @@
                href="{{ url_for('member_dashboard',
                                 member_id=session.get('member_id', 1)) }}">
               Member Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link"
-               href="{{ url_for('members_list') }}">
-              Members List
             </a>
           </li>
         {% endif %}
@@ -203,13 +231,6 @@
                    href="{{ url_for('trainer_member_lookup',
                                     trainer_id=session.get('trainer_id', 1)) }}">
                   Member Lookup
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item"
-                   href="{{ url_for('trainer_classes',
-                                    trainer_id=session.get('trainer_id', 1)) }}">
-                  Classes
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
@@ -245,6 +266,12 @@
                   Class Management
                 </a>
               </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('admin_demo_data') }}">
+                  Demo Data Controls
+                </a>
+              </li>
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item"
@@ -256,6 +283,12 @@
                 <a class="dropdown-item"
                    href="{{ url_for('admin_payments') }}">
                   Payments / Billing
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('members_list') }}">
+                  Member Directory
                 </a>
               </li>
             </ul>

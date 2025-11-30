@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from models.member import Member
 from models.scheduling import PrivateSession, ClassSchedule, Room
-from models.equipment import Equipment
+from datetime import datetime
+
+from models.equipment import Equipment, EquipmentIssue
 from models.payment import Payment
 
 from models.scheduling import (
@@ -24,6 +26,8 @@ def admin_reassign_session_room(
     *,
     session_id: int,
     new_room_id: int,
+    new_start: datetime | None = None,
+    new_end: datetime | None = None,
 ) -> PrivateSession:
     """
     Admin operation: Room Booking for PT sessions.
@@ -47,6 +51,8 @@ def admin_reassign_session_room(
         session,
         session_id=session_id,
         new_room_id=new_room_id,
+        new_start=new_start,
+        new_end=new_end,
     )
     return updated
 
@@ -84,11 +90,19 @@ def admin_reschedule_class(
         capacity=cls.capacity,
         start_time=new_start,
         end_time=new_end,
+        price=float(cls.price or 0),
         class_id=cls.class_id,
     )
     return updated
 
-def update_equipment_status(session, equipment_id: int, new_status: str) -> Equipment:
+def update_equipment_status(
+    session,
+    equipment_id: int,
+    new_status: str,
+    notes: str | None = None,
+    room_id: int | None = None,
+    trainer_id: int | None = None,
+) -> Equipment:
     """
     Update the status of an equipment item.
 
@@ -99,9 +113,87 @@ def update_equipment_status(session, equipment_id: int, new_status: str) -> Equi
         raise ValueError(f"Equipment {equipment_id} not found.")
 
     eq.status = new_status
+    if notes is not None:
+        eq.notes = notes
+    if room_id is not None:
+        eq.room_id = room_id or None
+    if trainer_id is not None:
+        eq.trainer_id = trainer_id or None
     session.commit()
     session.refresh(eq)
     return eq
+
+
+def create_equipment(
+    session,
+    *,
+    name: str,
+    status: str = "operational",
+    notes: str | None = None,
+    room_id: int | None = None,
+    trainer_id: int | None = None,
+) -> Equipment:
+    equipment = Equipment(
+        name=name,
+        status=status,
+        notes=notes,
+        room_id=room_id,
+        trainer_id=trainer_id,
+    )
+    session.add(equipment)
+    session.commit()
+    session.refresh(equipment)
+    return equipment
+
+
+def log_equipment_issue(
+    session,
+    *,
+    equipment_id: int | None,
+    room_id: int | None,
+    description: str,
+    status: str = "open",
+) -> EquipmentIssue:
+    if equipment_id is not None:
+        equipment = session.get(Equipment, equipment_id)
+        if not equipment:
+            raise ValueError(f"Equipment {equipment_id} not found.")
+
+    if room_id is not None:
+        room = session.get(Room, room_id)
+        if not room:
+            raise ValueError(f"Room {room_id} not found.")
+
+    issue = EquipmentIssue(
+        equipment_id=equipment_id,
+        room_id=room_id,
+        description=description,
+        status=status,
+    )
+    session.add(issue)
+    session.commit()
+    session.refresh(issue)
+    return issue
+
+
+def update_equipment_issue_status(
+    session,
+    *,
+    issue_id: int,
+    new_status: str,
+    resolved: bool = False,
+) -> EquipmentIssue:
+    issue = session.get(EquipmentIssue, issue_id)
+    if not issue:
+        raise ValueError(f"Issue {issue_id} not found.")
+
+    issue.status = new_status
+    if resolved:
+        issue.resolved_at = datetime.utcnow()
+
+    session.commit()
+    session.refresh(issue)
+    return issue
 
 def record_payment(
     session,
@@ -129,4 +221,3 @@ def record_payment(
     session.commit()
     session.refresh(payment)
     return payment
-

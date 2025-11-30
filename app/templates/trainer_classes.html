@@ -10,6 +10,9 @@
     <div class="card shadow-sm">
       <div class="card-header">Create New Class</div>
       <div class="card-body">
+        <p class="small text-muted">
+          Need to work around existing PT sessions? Review your availability windows below each submission.
+        </p>
         <form method="post" class="row g-2">
           <div class="col-12">
             <label class="form-label">Class Name</label>
@@ -23,13 +26,27 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-6">
-            <label class="form-label">Start</label>
-            <input type="datetime-local" name="start_time" class="form-control" required>
+          <div class="col-12">
+            <label class="form-label">Week Slot (next 4 weeks)</label>
+            <select name="slot_start" class="form-select" required>
+              {% for week in time_slots|groupby('week_label') %}
+                <optgroup label="{{ week.grouper }}">
+                  {% for slot in week.list %}
+                    <option value="{{ slot.value }}">
+                      {{ slot.day_label }} – {{ slot.time_label }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+            </select>
           </div>
-          <div class="col-6">
-            <label class="form-label">End</label>
-            <input type="datetime-local" name="end_time" class="form-control" required>
+          <div class="col-12">
+            <label class="form-label">Duration</label>
+            <select name="duration_minutes" class="form-select" required>
+              {% for minutes in duration_options %}
+                <option value="{{ minutes }}">{{ minutes }} minutes</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="col-12">
             <label class="form-label">Capacity</label>
@@ -56,18 +73,19 @@
               <th>Room</th>
               <th>Start</th>
               <th>End</th>
-              <th>Cap.</th>
+              <th>Seats</th>
             </tr>
           </thead>
           <tbody>
             {% for c in classes %}
+            {% set booked = c.registrations|length %}
             <tr>
               <td>{{ c.class_id }}</td>
               <td>{{ c.name }}</td>
-              <td>{{ c.room_id }}</td>
+              <td>{{ c.room.name if c.room else c.room_id }}</td>
               <td>{{ c.start_time }}</td>
               <td>{{ c.end_time }}</td>
-              <td>{{ c.capacity }}</td>
+              <td>{{ booked }}/{{ c.capacity }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -75,6 +93,38 @@
         {% else %}
         <p class="m-3 text-muted">No classes yet for this trainer.</p>
         {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header">Trainer Availability Windows</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Day</th>
+              <th>Start</th>
+              <th>End</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% set labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+          {% for av in availabilities %}
+            <tr>
+              <td>{{ labels[av.day_of_week] }}</td>
+              <td>{{ av.start_time.strftime("%I:%M %p") }}</td>
+              <td>{{ av.end_time.strftime("%I:%M %p") }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="3" class="text-center text-muted small py-3">
+                Add availability so members know when you can teach.
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

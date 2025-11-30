@@ -1,32 +1,111 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="h4 mb-3">Set Availability – Trainer {{ trainer_id }}</h1>
+<h1 class="h4 mb-3">
+  Trainer Availability –
+  {{ trainer.first_name }} {{ trainer.last_name }} (ID {{ trainer.trainer_id }})
+</h1>
 
-<div class="card shadow-sm">
-  <div class="card-body">
-    <form method="post" class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Day of Week</label>
-        <select name="day_of_week" class="form-select" required>
-          <option value="0">Monday</option>
-          <option value="1">Tuesday</option>
-          <option value="2">Wednesday</option>
-          <option value="3">Thursday</option>
-          <option value="4">Friday</option>
-          <option value="5">Saturday</option>
-          <option value="6">Sunday</option>
-        </select>
+<div class="row g-3">
+  <!-- Add new availability window -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light border-bottom">
+        <strong>Add Availability Window</strong>
       </div>
-        <div class="col-md-4">
-            <label class="form-label">Start (HH:MM)</label>
-            <input type="time" name="start_time" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-            <label class="form-label">End (HH:MM)</label>
-            <input type="time" name="end_time" class="form-control" required>
-        </div>
+      <div class="card-body">
+        <form method="post" class="row g-2">
+          <input type="hidden" name="action" value="create">
+          <div class="col-12">
+            <label class="form-label mb-1">Day of Week</label>
+            <select name="day_of_week" class="form-select" required>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1">Start Time</label>
+            <input type="time" name="start_time" class="form-control" step="3600" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1">End Time</label>
+            <input type="time" name="end_time" class="form-control" step="3600" required>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              Add Window
+            </button>
+          </div>
+          <div class="col-12 small text-muted mt-1">
+            Overlapping windows for the same day are rejected by the backend.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
-    </form>
+  <!-- Existing windows -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light border-bottom">
+        <strong>Existing Availability</strong>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped mb-0 align-middle">
+            <thead class="table-light">
+              <tr class="small text-center">
+                <th>Day</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Edit</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for a in availabilities %}
+              <tr class="small text-center">
+                <td>
+                  {% set days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+                  {{ days[a.day_of_week] }}
+                </td>
+                <td>{{ a.start_time.strftime("%I:%M %p") }}</td>
+                <td>{{ a.end_time.strftime("%I:%M %p") }}</td>
+                <td>
+                  <form method="post" class="row g-1 justify-content-center">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="availability_id" value="{{ a.availability_id }}">
+                    <div class="col-md-4 col-12">
+                      <input type="time" name="start_time" class="form-control form-control-sm" step="3600" value="{{ a.start_time.strftime('%H:%M') }}" required>
+                    </div>
+                    <div class="col-md-4 col-12">
+                      <input type="time" name="end_time" class="form-control form-control-sm" step="3600" value="{{ a.end_time.strftime('%H:%M') }}" required>
+                    </div>
+                    <div class="col-md-4 col-12">
+                      <button class="btn btn-outline-secondary btn-sm w-100" type="submit">Update</button>
+                    </div>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted small py-3">
+                  No availability windows defined yet.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer small text-muted">
+        These windows are kept non-overlapping by the ORM service method.
+        Your existing booking logic still uses the conflict checks on sessions/classes.
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

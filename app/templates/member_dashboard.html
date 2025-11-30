@@ -2,102 +2,206 @@
 {% block content %}
 <h1 class="h3 mb-3">Member Dashboard</h1>
 
-<div class="row">
-  <!-- Profile card -->
-  <div class="col-md-4 mb-3">
-  <div class="card shadow-sm">
-    <div class="card-header">Profile / Goals</div>
-    <div class="card-body">
-      <form method="post" action="{{ url_for('member_update_profile', member_id=member.member_id) }}" class="row g-2">
-        <div class="col-12">
-          <label class="form-label">First Name</label>
-          <input name="first_name" class="form-control" value="{{ member.first_name }}" required>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Last Name</label>
-          <input name="last_name" class="form-control" value="{{ member.last_name }}" required>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Email</label>
-          <input name="email" type="email" class="form-control" value="{{ member.email }}" required>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Target Weight (kg)</label>
-          <input name="target_weight" class="form-control"
-                 value="{{ dashboard.profile.target_weight or '' }}">
-        </div>
-        <div class="col-12">
-          <label class="form-label">Notes</label>
-          <input name="notes" class="form-control" value="{{ dashboard.profile.notes or '' }}">
-        </div>
-        <div class="col-12 mt-2">
-          <button class="btn btn-primary w-100" type="submit">Save Profile</button>
-        </div>
-      </form>
+{% if member_notifications %}
+  <div class="alert alert-info">
+    <strong>Recent Updates</strong>
+    <ul class="mb-0">
+      {% for note in member_notifications %}
+        <li>
+          {{ note.message }}
+          <span class="text-muted small">
+            ({{ note.created_at.strftime("%b %d %I:%M %p") }})
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="row g-4 section-block">
+  <!-- Profile / Goals -->
+  <div class="col-xl-4 col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white border-bottom">
+        <strong>Profile & Goals</strong>
+      </div>
+      <div class="card-body">
+        <form method="post"
+              action="{{ url_for('member_update_profile', member_id=member.member_id) }}"
+              class="row g-2">
+          <div class="col-12">
+            <label class="form-label mb-1">First Name</label>
+            <input name="first_name"
+                   class="form-control"
+                   value="{{ member.first_name }}"
+                   required>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Last Name</label>
+            <input name="last_name"
+                   class="form-control"
+                   value="{{ member.last_name }}"
+                   required>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Email</label>
+            <input name="email"
+                   type="email"
+                   class="form-control"
+                   value="{{ member.email }}"
+                   required>
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Target Weight (kg)</label>
+            <input name="target_weight"
+                   class="form-control"
+                   value="{{ dashboard.profile.target_weight or '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label mb-1">Notes / Goals</label>
+            <textarea name="notes"
+                      rows="3"
+                      class="form-control">{{ dashboard.profile.notes or '' }}</textarea>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              Save Profile
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
-
-  <!-- Latest metric + log form -->
-  <div class="col-md-8 mb-3">
+  <!-- Metrics + Stats -->
+  <div class="col-xl-8 col-lg-7">
+    <!-- Health metrics -->
     <div class="card shadow-sm mb-3">
-      <div class="card-header">Latest Health Metric</div>
+      <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+        <strong>Health Metrics</strong>
+        <span class="badge bg-secondary bg-opacity-25 text-muted fw-normal">
+          Latest entry & quick log
+        </span>
+      </div>
       <div class="card-body">
-        {% if dashboard.latest_health_metric %}
-          {% set hm = dashboard.latest_health_metric %}
-          <table class="table table-sm mb-2">
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered align-middle mb-0">
             <thead class="table-light">
-              <tr>
+              <tr class="text-center">
                 <th>Weight (kg)</th>
                 <th>Heart Rate</th>
                 <th>Timestamp</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>{{ hm.weight }}</td>
-                <td>{{ hm.heart_rate }}</td>
-                <td>{{ hm.timestamp }}</td>
-              </tr>
+              {% if dashboard.latest_health_metric %}
+                {% set hm = dashboard.latest_health_metric %}
+                <tr class="text-center">
+                  <td>{{ hm.weight }}</td>
+                  <td>{{ hm.heart_rate }}</td>
+                  <td class="text-muted">{{ hm.timestamp }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted">
+                    No metrics logged yet.
+                  </td>
+                </tr>
+              {% endif %}
             </tbody>
           </table>
-        {% else %}
-          <p class="text-muted mb-2">No metrics yet.</p>
-        {% endif %}
+        </div>
 
-        <form method="post" action="{{ url_for('member_add_metric', member_id=member.member_id) }}" class="row g-2">
-          <div class="col-md-4">
-            <label class="form-label">Weight (kg)</label>
-            <input name="weight" class="form-control">
+        <form method="post"
+              action="{{ url_for('member_add_metric', member_id=member.member_id) }}"
+              class="row g-2 mt-2">
+          <div class="col-md-4 col-6">
+            <label class="form-label mb-1">Weight (kg)</label>
+            <input name="weight"
+                   class="form-control"
+                   placeholder="e.g. 62.5">
           </div>
-          <div class="col-md-4">
-            <label class="form-label">Heart Rate</label>
-            <input name="heart_rate" class="form-control">
+          <div class="col-md-4 col-6">
+            <label class="form-label mb-1">Heart Rate</label>
+            <input name="heart_rate"
+                   class="form-control"
+                   placeholder="e.g. 72">
           </div>
           <div class="col-md-4 d-flex align-items-end">
-            <button class="btn btn-outline-primary w-100" type="submit">Log Metric</button>
+            <button class="btn btn-outline-secondary w-100" type="submit">
+              Log Metric
+            </button>
           </div>
         </form>
+
+        <!-- Full Health History -->
+        <hr class="mt-3 mb-2">
+
+        <div class="mt-1">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-semibold small text-muted">Health History</span>
+            <span class="small text-muted">Most recent first</span>
+          </div>
+          <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr class="text-center small">
+                  <th>Weight (kg)</th>
+                  <th>Heart Rate</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for m in health_history %}
+                <tr class="text-center small">
+                  <td>{{ m.weight }}</td>
+                  <td>{{ m.heart_rate }}</td>
+                  <td class="text-muted">{{ m.timestamp }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted small py-3">
+                    No health metrics logged yet.
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Stats -->
     <div class="card shadow-sm">
-      <div class="card-header">Stats</div>
-      <div class="card-body">
-        <div class="row text-center">
-          <div class="col-md-4">
-            <h4>{{ dashboard.stats.past_classes_attended }}</h4>
-            <div class="text-muted">Past Classes Attended</div>
+      <div class="card-header bg-light border-bottom">
+        <strong>Progress Snapshot</strong>
+      </div>
+      <div class="card-body py-3">
+        <div class="row text-center g-3">
+          <div class="col-md-4 col-12">
+            <div class="border rounded-3 p-2 bg-white">
+              <div class="text-muted small">Past Classes Attended</div>
+              <div class="h4 mb-0 text-primary">
+                {{ dashboard.stats.past_classes_attended }}
+              </div>
+            </div>
           </div>
-          <div class="col-md-4">
-            <h4>{{ dashboard.stats.upcoming_private_session_count }}</h4>
-            <div class="text-muted">Upcoming PT Sessions</div>
+          <div class="col-md-4 col-12">
+            <div class="border rounded-3 p-2 bg-white">
+              <div class="text-muted small">Upcoming PT Sessions</div>
+              <div class="h4 mb-0 text-success">
+                {{ dashboard.stats.upcoming_private_session_count }}
+              </div>
+            </div>
           </div>
-          <div class="col-md-4">
-            <h4>{{ dashboard.stats.upcoming_class_count }}</h4>
-            <div class="text-muted">Upcoming Classes</div>
+          <div class="col-md-4 col-12">
+            <div class="border rounded-3 p-2 bg-white">
+              <div class="text-muted small">Upcoming Classes</div>
+              <div class="h4 mb-0 text-warning">
+                {{ dashboard.stats.upcoming_class_count }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -106,109 +210,415 @@
 </div>
 
 <!-- Sessions + Classes -->
-<div class="row mt-3">
-  <div class="col-md-6 mb-3">
-    <div class="card shadow-sm">
-      <div class="card-header">Upcoming Private Sessions</div>
+<div class="row g-4 section-block">
+  <!-- Private PT Sessions -->
+  <div class="col-xl-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-primary-subtle text-primary rounded-pill">1-on-1 PT</span>
+          <strong>Private Training Sessions</strong>
+        </div>
+        <span class="text-muted small">Conflicts auto-checked</span>
+      </div>
       <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Start</th><th>End</th><th>Room</th><th>Trainer</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for ps in dashboard.upcoming_private_sessions %}
-            <tr>
-              <td>{{ ps.start_time }}</td>
-              <td>{{ ps.end_time }}</td>
-              <td>{{ ps.room_id }}</td>
-              <td>{{ ps.trainer_id }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="4" class="text-muted text-center">None scheduled.</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
+        <div class="p-3 pt-2 text-muted small">
+          Work 1-on-1 with a trainer. Pick a slot that fits the PT availability table below.
+        </div>
+        <div class="table-wrapper">
+          <table class="table-clean align-middle">
+            <thead>
+              <tr class="text-center small">
+                <th>Start</th>
+                <th>End</th>
+                <th>Room</th>
+                <th>Trainer</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for ps in dashboard.upcoming_private_sessions %}
+              <tr class="small text-center">
+                <td>{{ ps.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>{{ ps.end_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>
+                  <span class="badge bg-secondary-subtle">
+                    {{ ps.room.name if ps.room else ("Room " ~ ps.room_id) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge bg-primary-subtle">
+                    {{ ps.trainer.first_name if ps.trainer else "Trainer" }} {{ ps.trainer.last_name if ps.trainer else ps.trainer_id }}
+                  </span>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted small py-3">
+                  No private sessions scheduled.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div class="card-footer">
-        <form method="post" action="{{ url_for('member_book_session', member_id=member.member_id) }}" class="row g-2">
-          <div class="col-md-3">
-            <label class="form-label">Trainer ID</label>
-            <input name="trainer_id" class="form-control" required>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Room ID</label>
-            <input name="room_id" class="form-control" required>
-          </div>
-          <div class="col-md-3">
-          <div class="col-md-3">
-            <label class="form-label">Start</label>
-            <input
-              type="datetime-local"
-              name="start_time"
-              class="form-control"
-              required
-            >
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">End</label>
-            <input
-              type="datetime-local"
-              name="end_time"
-              class="form-control"
-              required
-            >
-          </div>
-          <div class="col-12 mt-2">
-            <button class="btn btn-outline-primary w-100" type="submit">Book PT Session</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        <div class="table-wrapper">
+        <div class="row g-2 mb-3 align-items-end">
+          <form class="col-md-6" method="get" action="{{ url_for('member_dashboard', member_id=member.member_id) }}">
+            <label class="form-label mb-1">Trainer</label>
+            <div class="input-group">
+              <select name="trainer_id" class="form-select">
+                {% for group in pt_slot_groups %}
+                  <option value="{{ group.trainer.trainer_id }}"
+                          {% if group.trainer.trainer_id == selected_trainer_id %}selected{% endif %}>
+                    {{ group.trainer.first_name }} {{ group.trainer.last_name }}
+                  </option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-primary" type="submit">Choose</button>
+            </div>
+          </form>
+          {% if selected_trainer_id %}
+          <form class="col-md-6" method="get" action="{{ url_for('member_dashboard', member_id=member.member_id) }}">
+            <input type="hidden" name="trainer_id" value="{{ selected_trainer_id }}">
+            <label class="form-label mb-1">Day</label>
+            <div class="input-group">
+              <select name="slot_day" class="form-select">
+                {% for day in day_options %}
+                  <option value="{{ day.key }}" {% if day.key == selected_day_key %}selected{% endif %}>
+                    {{ day.label }}
+                  </option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-secondary" type="submit">Show Slots</button>
+            </div>
+          </form>
+          {% endif %}
+        </div>
 
-  <div class="col-md-6 mb-3">
-    <div class="card shadow-sm">
-      <div class="card-header">Upcoming Classes (Registered)</div>
-      <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Name</th><th>Start</th><th>Room</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for cls in dashboard.upcoming_classes %}
-            <tr>
-              <td>{{ cls.name }}</td>
-              <td>{{ cls.start_time }}</td>
-              <td>{{ cls.room_id }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="3" class="text-muted text-center">No upcoming classes.</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="card-footer">
-        <form method="post" action="{{ url_for('member_register_class', member_id=member.member_id) }}" class="row g-2">
-          <div class="col-12">
-            <label class="form-label">Register for Upcoming Class</label>
-            <select name="class_id" class="form-select">
-              {% for cls in upcoming_classes %}
-                <option value="{{ cls.class_id }}">
-                  {{ cls.class_id }} – {{ cls.name }} ({{ cls.start_time }})
+        <form method="post"
+              action="{{ url_for('member_book_session', member_id=member.member_id) }}"
+              class="row g-3">
+          <input type="hidden" name="trainer_id" value="{{ selected_trainer_id or '' }}">
+          <div class="col-md-6 col-12">
+            <label class="form-label mb-1">Room</label>
+            <select name="room_id"
+                    class="form-select"
+                    required>
+              {% for room in current_rooms %}
+                <option value="{{ room.id }}">#{{ room.id }} – {{ room.name }}</option>
+              {% else %}
+                <option disabled>No rooms available</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6 col-12">
+            <label class="form-label mb-1">Available Slots</label>
+            <select name="slot_value" class="form-select" required>
+              {% for slot in slot_options %}
+                <option value="{{ slot.value }}" {% if slot.conflict %}disabled class="text-muted"{% endif %}>
+                  {{ slot.day_label }} – {{ slot.label }}
+                  {% if slot.conflict %}(conflict){% endif %}
                 </option>
+              {% else %}
+                <option disabled>No slots available</option>
               {% endfor %}
             </select>
           </div>
           <div class="col-12 mt-2">
-            <button class="btn btn-outline-primary w-100" type="submit">Register</button>
+            <button class="btn btn-outline-primary w-100" type="submit"
+                    {% if not slot_options %}disabled{% endif %}>
+              Book PT Session
+            </button>
           </div>
         </form>
+        </div>
+
+        <div class="table-divider"></div>
+
+        <div class="mt-1">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-semibold small text-muted">Trainer PT Availability</span>
+            <span class="small text-muted">Pick a slot inside one of these windows</span>
+          </div>
+
+        <div class="table-wrapper" style="max-height: 260px; overflow-y: auto;">
+          <table class="table-clean table-auto align-middle mb-0">
+              <thead>
+                <tr class="small text-center">
+                  <th>Trainer</th>
+                  <th>Day</th>
+                  <th>Start</th>
+                  <th>End</th>
+                </tr>
+              </thead>
+              <tbody>
+{% set labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+              {% for group in trainer_availabilities|groupby('trainer.trainer_id') %}
+                {% set trainer_obj = group.list[0].trainer %}
+                <tr class="table-secondary text-center">
+                  <td colspan="4" class="text-start fw-semibold">
+                    {{ trainer_obj.first_name }} {{ trainer_obj.last_name }}
+                    (ID {{ trainer_obj.trainer_id }})
+                  </td>
+                </tr>
+                {% for av in group.list %}
+                  <tr class="small text-center">
+                    <td></td>
+                    <td>{{ labels[av.day_of_week] }}</td>
+                    <td>{{ av.start_time.strftime("%I:%M %p") }}</td>
+                    <td>{{ av.end_time.strftime("%I:%M %p") }}</td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted small py-3">
+                    No trainer availability defined yet.
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- end trainer availability -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Classes -->
+  <div class="col-xl-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-warning-subtle text-warning rounded-pill">Group</span>
+          <strong>Studio Classes</strong>
+        </div>
+        <span class="text-muted small">See capacity before registering</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr class="small text-center">
+                <th>Class</th>
+                <th>Trainer</th>
+                <th>Start</th>
+                <th>Room</th>
+                <th>Capacity</th>
+                <th>Remaining</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for cls in dashboard.upcoming_classes %}
+              {% set used = cls.registrations|length %}
+              {% set remaining = cls.capacity - used %}
+              <tr class="small text-center">
+                <td class="text-start">{{ cls.name }}</td>
+                <td>{{ cls.trainer.first_name if cls.trainer else "Trainer" }} {{ cls.trainer.last_name if cls.trainer else "" }}</td>
+                <td>{{ cls.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>{{ cls.room.name if cls.room else ("Room " ~ cls.room_id) }}</td>
+                <td>{{ cls.capacity }}</td>
+                <td class="{% if remaining <= 0 %}text-danger{% elif remaining <= 3 %}text-warning{% else %}text-success{% endif %}">
+                  {{ remaining }}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted small py-3">
+                  No upcoming classes.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="table-divider"></div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold small text-muted">Available classes & capacities</span>
+            <span class="small text-muted">Choose before registering</span>
+          </div>
+          <div class="table-wrapper" style="max-height: 240px; overflow-y:auto;">
+            <table class="table-clean table-auto align-middle mb-0">
+              <thead>
+                <tr class="small text-center">
+                  <th>Class</th>
+                  <th>Trainer</th>
+                  <th>Start</th>
+                  <th>Room</th>
+                  <th>Seats Left</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for cls in upcoming_classes %}
+                {% set used = cls.registrations|length %}
+                {% set remaining = cls.capacity - used %}
+                <tr class="small text-center">
+                  <td class="text-start">{{ cls.name }}</td>
+                  <td>{{ cls.trainer.first_name if cls.trainer else "Trainer" }} {{ cls.trainer.last_name if cls.trainer else "" }}</td>
+                  <td>{{ cls.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                  <td>{{ cls.room.name if cls.room else ("Room " ~ cls.room_id) }}</td>
+                  <td class="{% if remaining <= 0 %}text-danger{% elif remaining <= 3 %}text-warning{% else %}text-success{% endif %}">
+                    {{ remaining }} / {{ cls.capacity }}
+                  </td>
+                  <td>${{ "%.2f"|format(cls.price or 0) }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted small py-3">
+                    No classes scheduled yet.
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer position-relative" style="z-index: 5;">
+        <div class="table-wrapper position-relative" style="z-index: 6;">
+          <form method="post"
+                action="{{ url_for('member_register_class', member_id=member.member_id) }}"
+                class="row g-3 bg-white p-2 rounded shadow-sm"
+                style="position: relative; z-index: 7;">
+            <div class="col-12">
+              <label class="form-label mb-1">Register for Upcoming Class</label>
+              <select name="class_id" class="form-select" required>
+                {% if class_options %}
+                  {% for entry in class_options %}
+                    <option value="{{ entry.class.class_id }}"
+                            {% if entry.conflict %}disabled class="text-muted"{% endif %}>
+                      {{ entry.class.name }} – {{ entry.class.start_time.strftime("%b %d %I:%M %p") }}
+                      • {{ entry.remaining }} seats
+                      • ${{ "%.2f"|format(entry.class.price or 0) }}
+                      {% if entry.conflict %}(conflict){% endif %}
+                    </option>
+                  {% endfor %}
+                {% else %}
+                  <option disabled>No classes with open seats.</option>
+                {% endif %}
+              </select>
+              <p class="table-note mt-2">Class details shown above include trainer, room, and remaining seats.</p>
+            </div>
+            <div class="col-12 position-relative" style="z-index: 10;">
+              <button class="btn btn-outline-secondary w-100" type="submit">
+                Register for Class
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="py-5"></div>
+
+<div class="row g-3" style="clear: both; margin-top: 8rem;">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div>
+          <span class="badge bg-secondary-subtle text-secondary rounded-pill">Billing</span>
+          <strong class="ms-2">Payments &amp; Receipts</strong>
+        </div>
+        <span class="small text-muted">Track class charges and payment status</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr class="small text-center">
+                <th class="text-start">Class / Description</th>
+                <th>Trainer</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for bill in billing_items %}
+              <tr class="small text-center">
+                <td class="text-start">
+                  {% if bill.class_schedule %}
+                    <div class="fw-semibold">{{ bill.class_schedule.name }}</div>
+                    <div class="text-muted">
+                      {{ bill.class_schedule.start_time.strftime("%b %d %I:%M %p") }}
+                    </div>
+                  {% else %}
+                    <div class="fw-semibold">{{ bill.description or "Manual charge" }}</div>
+                    <div class="text-muted">Created {{ bill.created_at.strftime("%b %d") }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if bill.class_schedule and bill.class_schedule.trainer %}
+                    {{ bill.class_schedule.trainer.first_name }}
+                    {{ bill.class_schedule.trainer.last_name }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>${{ "%.2f"|format(bill.amount) }}</td>
+                <td>
+                  <span class="badge {% if bill.status == 'paid' %}bg-success-subtle text-success{% elif bill.status == 'cancelled' %}bg-secondary-subtle text-secondary{% else %}bg-warning-subtle text-warning{% endif %}">
+                    {{ bill.status|capitalize }}
+                  </span>
+                </td>
+                <td>
+                  {% if bill.paid_at %}
+                    Paid {{ bill.paid_at.strftime("%b %d %I:%M %p") }}
+                  {% else %}
+                    Updated {{ bill.updated_at.strftime("%b %d %I:%M %p") }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted small py-3">
+                  No billing activity yet. Register for a class to see charges here.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="table-divider"></div>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr class="small text-center">
+                <th>Payment Date</th>
+                <th>Amount</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for payment in member_payments %}
+              <tr class="small text-center">
+                <td>{{ payment.paid_at.strftime("%b %d %I:%M %p") }}</td>
+                <td>${{ "%.2f"|format(payment.amount) }}</td>
+                <td class="text-start">{{ payment.description or "Payment" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted small py-3">
+                  No payments recorded yet.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
+      <div class="card-footer">
+        <div class="table-wrapper">
+          <form method="post"
+                action="{{ url_for('member_register_class', member_id=member.member_id) }}"
+                class="row g-3 position-relative"
+                style="z-index: 10; background: #fff;">
