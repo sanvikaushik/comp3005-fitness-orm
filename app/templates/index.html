@@ -143,11 +143,21 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">New Start</label>
-            <input name="new_start" class="form-control" placeholder="2025-12-01T09:00" required>
+            <input
+              type="datetime-local"
+              name="new_start"
+              class="form-control"
+              required
+            >
           </div>
           <div class="col-md-6">
             <label class="form-label">New End</label>
-            <input name="new_end" class="form-control" placeholder="2025-12-01T10:00" required>
+            <input
+              type="datetime-local"
+              name="new_end"
+              class="form-control"
+              required
+            >
           </div>
           <div class="col-12">
             <button class="btn btn-primary mt-2" type="submit">Reschedule</button>
