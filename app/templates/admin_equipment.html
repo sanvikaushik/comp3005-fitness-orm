@@ -3,14 +3,64 @@
 {% block title %}Equipment Maintenance{% endblock %}
 
 {% block content %}
-<h2>Equipment Maintenance</h2>
+<h1 class="h4 mb-3">Admin • Equipment & Maintenance</h1>
+<p class="text-muted mb-4">
+  Log new equipment, track repair tickets, and update hardware status tied to rooms.
+</p>
 
-<div class="row">
-  <div class="col-md-4 mb-3">
-    <div class="card shadow-sm">
-      <div class="card-header">Update Status</div>
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Add Equipment</div>
       <div class="card-body">
         <form method="post" class="row g-2">
+          <input type="hidden" name="action" value="create_equipment">
+          <div class="col-12">
+            <label class="form-label">Name</label>
+            <input class="form-control" name="name" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+              <option value="operational">Operational</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="retired">Retired</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Room (optional)</label>
+            <select class="form-select" name="room_id">
+              <option value="">General</option>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">#{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Trainer (optional)</label>
+            <select class="form-select" name="trainer_id">
+              <option value="">Unassigned</option>
+              {% for trainer in trainers %}
+                <option value="{{ trainer.trainer_id }}">{{ trainer.first_name }} {{ trainer.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" rows="2" name="notes"></textarea>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-primary w-100" type="submit">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header">Update Equipment Status</div>
+      <div class="card-body">
+        <form method="post" class="row g-2">
+          <input type="hidden" name="action" value="update_equipment">
           <div class="col-12">
             <label class="form-label">Equipment ID</label>
             <input type="number" name="equipment_id" class="form-control" required>
@@ -23,42 +73,162 @@
               <option value="retired">Retired</option>
             </select>
           </div>
+          <div class="col-12">
+            <label class="form-label">Room (optional)</label>
+            <select class="form-select" name="room_id">
+              <option value="">General</option>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">#{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Trainer (optional)</label>
+            <select class="form-select" name="trainer_id">
+              <option value="">Unassigned</option>
+              {% for trainer in trainers %}
+                <option value="{{ trainer.trainer_id }}">{{ trainer.first_name }} {{ trainer.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" rows="2" name="notes"></textarea>
+          </div>
           <div class="col-12 mt-2">
-            <button class="btn btn-primary w-100" type="submit">Save</button>
+            <button class="btn btn-outline-primary w-100" type="submit">Update</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <div class="col-md-8 mb-3">
-    <div class="card shadow-sm">
-      <div class="card-header">All Equipment</div>
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Equipment Inventory</strong>
+        <small class="text-muted">Total {{ equipment|length }}</small>
+      </div>
       <div class="card-body p-0">
-        {% if equipment %}
-        <table class="table table-striped table-hover mb-0">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="table-responsive">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Room</th>
+                <th>Trainer</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
             {% for e in equipment %}
-            <tr>
-              <td>{{ e.equipment_id }}</td>
-              <td>{{ e.name }}</td>
-              <td>{{ e.status }}</td>
-              <td>{{ e.notes }}</td>
-            </tr>
+              <tr>
+                <td>{{ e.equipment_id }}</td>
+                <td>{{ e.name }}</td>
+                <td>{{ e.status }}</td>
+                <td>{{ e.room.name if e.room else "General" }}</td>
+                <td>
+                  {% if e.trainer %}
+                    {{ e.trainer.first_name }} {{ e.trainer.last_name }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>{{ e.notes or "—" }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-3">No equipment records yet.</td></tr>
             {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <p class="m-3 text-muted">No equipment records yet.</p>
-        {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header">Issue Tracking</div>
+      <div class="card-body">
+        <form method="post" class="row g-2 mb-3">
+          <input type="hidden" name="action" value="log_issue">
+          <div class="col-md-4">
+            <label class="form-label">Equipment</label>
+            <select class="form-select" name="issue_equipment_id">
+              <option value="">-- Optional --</option>
+              {% for e in equipment %}
+                <option value="{{ e.equipment_id }}">#{{ e.equipment_id }} – {{ e.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Room</label>
+            <select class="form-select" name="issue_room_id">
+              <option value="">-- Optional --</option>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">#{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <select name="issue_status" class="form-select">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" rows="2" name="description" required></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-outline-secondary w-100" type="submit">Log Issue</button>
+          </div>
+        </form>
+
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Equipment</th>
+                <th>Room</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Reported</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for issue in issues %}
+              <tr>
+                <td>{{ issue.issue_id }}</td>
+                <td>{{ issue.equipment.name if issue.equipment else "—" }}</td>
+                <td>{{ issue.room.name if issue.room else "—" }}</td>
+                <td>{{ issue.description }}</td>
+                <td>{{ issue.status }}</td>
+                <td>{{ issue.reported_at.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>
+                  <form method="post" class="d-flex gap-2 align-items-center">
+                    <input type="hidden" name="action" value="update_issue">
+                    <input type="hidden" name="issue_id" value="{{ issue.issue_id }}">
+                    <select name="new_issue_status" class="form-select form-select-sm">
+                      <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
+                      <option value="in_progress" {% if issue.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                      <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                      <option value="closed" {% if issue.status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-3">No issues logged.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

@@ -1,65 +1,136 @@
 {% extends "base.html" %}
 
-{% block title %}Payments{% endblock %}
+{% block title %}Billing & Payments{% endblock %}
 
 {% block content %}
-<h2>Payments</h2>
+<h1 class="h4 mb-3">Admin • Billing & Payments</h1>
+<p class="text-muted mb-4">
+  Review outstanding class bills, add manual line items, and mark payments as they are received.
+  Each class carries its trainer-specific price automatically.
+ </p>
 
-<div class="row">
-  <div class="col-md-4 mb-3">
-    <div class="card shadow-sm">
-      <div class="card-header">Record Payment</div>
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Pending Bills</strong>
+    <small class="text-muted">Mark paid to record payment</small>
+  </div>
+  <div class="card-body p-0">
+    {% if pending_bills %}
+    <div class="table-wrapper">
+      <table class="table-clean table-auto">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th>Class / Trainer</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for bill in pending_bills %}
+          <tr>
+            <td>{{ bill.member.first_name }} {{ bill.member.last_name }} (#{{ bill.member.member_id }})</td>
+            <td>
+              {% if bill.class_schedule %}
+                {{ bill.class_schedule.name }}
+                with {{ bill.class_schedule.trainer.first_name }}
+                on {{ bill.class_schedule.start_time.strftime("%b %d %I:%M %p") }}
+              {% else %}
+                {{ bill.description }}
+              {% endif %}
+            </td>
+            <td>${{ "%.2f"|format(bill.amount) }}</td>
+            <td class="text-capitalize">{{ bill.status }}</td>
+            <td>
+              <form method="post" class="d-inline">
+                <input type="hidden" name="action" value="mark_paid">
+                <input type="hidden" name="billing_id" value="{{ bill.billing_id }}">
+                <button class="btn btn-sm btn-outline-success" type="submit">Mark Paid</button>
+              </form>
+              <form method="post" class="d-inline ms-2">
+                <input type="hidden" name="action" value="cancel_bill">
+                <input type="hidden" name="billing_id" value="{{ bill.billing_id }}">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Cancel</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="m-3 text-muted">No pending bills – all caught up!</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header">Add Manual Billing Item</div>
       <div class="card-body">
         <form method="post" class="row g-2">
+          <input type="hidden" name="action" value="create_bill">
           <div class="col-12">
-            <label class="form-label">Member ID</label>
-            <input type="number" name="member_id" class="form-control" required>
+            <label class="form-label">Member</label>
+            <select name="member_id" class="form-select" required>
+              {% for member in members %}
+                <option value="{{ member.member_id }}">
+                  {{ member.first_name }} {{ member.last_name }} (#{{ member.member_id }})
+                </option>
+              {% endfor %}
+            </select>
           </div>
           <div class="col-12">
             <label class="form-label">Amount</label>
-            <input type="number" step="0.01" name="amount" class="form-control" required>
+            <input type="number" step="0.01" min="0" name="amount" class="form-control" required>
           </div>
           <div class="col-12">
-            <label class="form-label">Description (optional)</label>
-            <input name="description" class="form-control">
+            <label class="form-label">Description</label>
+            <input name="description" class="form-control" placeholder="e.g., Private coaching add-on">
           </div>
           <div class="col-12 mt-2">
-            <button class="btn btn-primary w-100" type="submit">Save</button>
+            <button class="btn btn-primary w-100" type="submit">Create Bill</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <div class="col-md-8 mb-3">
-    <div class="card shadow-sm">
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
       <div class="card-header">Recent Payments</div>
       <div class="card-body p-0">
         {% if payments %}
-        <table class="table table-striped table-hover mb-0">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Member</th>
-              <th>Amount</th>
-              <th>Time</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto">
+            <thead>
+              <tr>
+                <th>Member ID</th>
+                <th>Member</th>
+                <th>Amount</th>
+                <th>Paid At</th>
+                <th>Description</th>
+                <th>Payment #</th>
+              </tr>
+            </thead>
+            <tbody>
             {% for p in payments %}
-            <tr>
-              <td>{{ p.payment_id }}</td>
-              <td>{{ p.member_id }}</td>
-              <td>{{ "%.2f"|format(p.amount) }}</td>
-              <td>{{ p.paid_at }}</td>
-              <td>{{ p.description }}</td>
-            </tr>
+              <tr>
+                <td>#{{ p.member.member_id }}</td>
+                <td>{{ p.member.first_name }} {{ p.member.last_name }}</td>
+                <td>${{ "%.2f"|format(p.amount) }}</td>
+                <td>{{ p.paid_at.strftime("%b %d %I:%M %p") }}</td>
+                <td>{{ p.description or "Class payment" }}</td>
+                <td class="text-muted">Payment {{ p.payment_id }}</td>
+              </tr>
             {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
         {% else %}
-        <p class="m-3 text-muted">No payments recorded yet.</p>
+          <p class="m-3 text-muted">No payments recorded yet.</p>
         {% endif %}
       </div>
     </div>
