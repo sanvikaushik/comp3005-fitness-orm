@@ -1,0 +1,145 @@
+@startuml
+
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+}
+
+' ============
+' ENTITIES
+' ============
+
+class Member {
+  +MemberID : INT <<PK>>
+  FirstName : VARCHAR
+  LastName  : VARCHAR
+  Email     : VARCHAR
+  PhoneNumber : VARCHAR
+  DateOfBirth : DATE
+  Gender      : VARCHAR
+}
+
+class Trainer {
+  +TrainerID : INT <<PK>>
+  FirstName : VARCHAR
+  LastName  : VARCHAR
+  Email     : VARCHAR
+  PhoneNumber : VARCHAR
+  Specialization : VARCHAR
+  IsActive : BOOLEAN
+}
+
+class AdministrativeStaff {
+  +StaffID : INT <<PK>>
+  FirstName : VARCHAR
+  LastName  : VARCHAR
+  Email     : VARCHAR
+  Password  : VARCHAR
+}
+
+class Room {
+  +RoomID : INT <<PK>>
+  RoomName : VARCHAR
+  Capacity : INT
+}
+
+class Equipment {
+  +EquipmentID : INT <<PK>>
+  RoomID : INT <<FK>>
+  Name : VARCHAR
+  Status : VARCHAR
+  LastServicedDate : DATE
+}
+
+class HealthMetric {
+  +MetricID : INT <<PK>>
+  MemberID : INT <<FK>>
+  RecordedAt : TIMESTAMP
+  Weight : NUMERIC
+  Height : NUMERIC
+  TargetWeight : NUMERIC
+  HeartRate : INT
+}
+
+class ClassSchedule {
+  +ClassID : INT <<PK>>
+  ClassName : VARCHAR
+  TrainerID : INT <<FK>>
+  RoomID : INT <<FK>>
+  DayOfWeek : INT
+  StartTime : TIME
+  MaxCapacity : INT
+}
+
+class ClassRegistration {
+  +RegistrationID : INT <<PK>>
+  MemberID : INT <<FK>>
+  ClassID  : INT <<FK>>
+  DateRegistration : DATE
+}
+
+class PrivateSession {
+  +SessionID : INT <<PK>>
+  MemberID : INT <<FK>>
+  TrainerID : INT <<FK>>
+  RoomID : INT <<FK>>
+  SessionDate : DATE
+  SessionTime : TIME
+  ActivityType : VARCHAR
+  IsConflict : BOOLEAN
+}
+
+class Payment {
+  +PaymentID : INT <<PK>>
+  MemberID : INT <<FK>>
+  StaffID : INT <<FK>>
+  Amount : NUMERIC
+  PaymentDate : DATE
+  PaymentType : VARCHAR
+  Notes : VARCHAR
+}
+
+class TrainerAvailability {
+  +AvailabilityID : INT <<PK>>
+  TrainerID : INT <<FK>>
+  DayOfWeek : INT
+  StartTime : TIME
+  EndTime : TIME
+  IsRecurring : BOOLEAN
+}
+
+class EquipmentMaintenance {
+  +MaintenanceID : INT <<PK>>
+  EquipmentID : INT <<FK>>
+  StaffID : INT <<FK>>
+  ReportedAt : TIMESTAMP
+  Description : VARCHAR
+  Status : VARCHAR
+  ResolvedAt : TIMESTAMP
+}
+
+' =========================
+' RELATIONSHIPS (FK LINKS)
+' =========================
+
+Member ||--o{ HealthMetric : MemberID
+Member ||--o{ ClassRegistration : MemberID
+Member ||--o{ PrivateSession : MemberID
+Member ||--o{ Payment : MemberID
+
+Trainer ||--o{ ClassSchedule : TrainerID
+Trainer ||--o{ PrivateSession : TrainerID
+Trainer ||--o{ TrainerAvailability : TrainerID
+
+Room ||--o{ ClassSchedule : RoomID
+Room ||--o{ Equipment : RoomID
+Room ||--o{ PrivateSession : RoomID
+
+AdministrativeStaff ||--o{ Payment : StaffID
+AdministrativeStaff ||--o{ EquipmentMaintenance : StaffID
+
+Equipment ||--o{ EquipmentMaintenance : EquipmentID
+
+ClassSchedule ||--o{ ClassRegistration : ClassID
+
+@enduml
