@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Admin • Class Management</h1>
+<p class="text-muted mb-4">
+  Define new group classes, assign trainers/rooms, and review upcoming schedules. All conflict checks apply automatically.
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>
+          {% if editing_class %}
+            Update Class #{{ editing_class.class_id }}
+          {% else %}
+            Create Class
+          {% endif %}
+        </strong>
+        {% if editing_class %}
+          <a class="btn btn-sm btn-outline-secondary"
+             href="{{ url_for('admin_class_management', trainer_id=selected_trainer_id) }}">
+            Clear
+          </a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="get" class="mb-3">
+          <label class="form-label">Choose Trainer</label>
+          <div class="input-group">
+            <select name="trainer_id" class="form-select">
+              {% for trainer in trainers %}
+                <option value="{{ trainer.trainer_id }}"
+                        {% if trainer.trainer_id == selected_trainer_id %}selected{% endif %}>
+                  {{ trainer.first_name }} {{ trainer.last_name }}
+                </option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-outline-secondary" type="submit">Select</button>
+          </div>
+        </form>
+        {% set trainer_classes = trainer_classes_map.get(selected_trainer_id, []) %}
+        {% if trainer_classes %}
+          <form method="get" class="mb-3">
+            <input type="hidden" name="trainer_id" value="{{ selected_trainer_id }}">
+            <label class="form-label">Edit Existing Class</label>
+            <div class="input-group">
+              <select name="edit_class_id" class="form-select">
+                {% for cls in trainer_classes %}
+                  <option value="{{ cls.class_id }}"
+                          {% if editing_class and editing_class.class_id == cls.class_id %}selected{% endif %}>
+                    #{{ cls.class_id }} – {{ cls.name }}
+                    ({{ cls.start_time.strftime("%b %d %I:%M %p") }})
+                  </option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-primary" type="submit">Load</button>
+            </div>
+          </form>
+        {% endif %}
+        <form method="post" class="row g-2">
+          {% if editing_class %}
+            <input type="hidden" name="class_id" value="{{ editing_class.class_id }}">
+          {% endif %}
+          <div class="col-12">
+            <label class="form-label">Class Name</label>
+            <input name="name"
+                   class="form-control"
+                   value="{{ editing_class.name if editing_class else '' }}"
+                   required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Trainer</label>
+            <select name="trainer_id" class="form-select" required>
+              {% for trainer in trainers %}
+                <option value="{{ trainer.trainer_id }}"
+                        {% if editing_class %}
+                          {% if trainer.trainer_id == editing_class.trainer_id %}selected{% endif %}
+                        {% elif trainer.trainer_id == selected_trainer_id %}selected{% endif %}>
+                  {{ trainer.first_name }} {{ trainer.last_name }} (#{{ trainer.trainer_id }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Room</label>
+            {% if room_options %}
+              <select name="room_id" class="form-select" required>
+                {% for room in room_options %}
+                  <option value="{{ room.room_id }}"
+                          {% if editing_class and room.room_id == editing_class.room_id %}selected{% endif %}>
+                    {{ room.name }} (Cap {{ room.capacity }})
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <div class="alert alert-warning small mb-0">
+                No rooms mapped to this trainer yet. Assign rooms first.
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label">Week Slot (next 4 weeks)</label>
+            {% if time_slots %}
+              <select name="slot_start" class="form-select" required>
+                {% for week in time_slots|groupby('week_label') %}
+                  <optgroup label="{{ week.grouper }}">
+                    {% for slot in week.list %}
+                      <option value="{{ slot.value }}"
+                              {% if selected_slot_value and slot.value == selected_slot_value %}selected{% endif %}>
+                        {{ slot.day_label }} – {{ slot.time_label }}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+                {% endfor %}
+              </select>
+            {% else %}
+              <div class="alert alert-info small mb-0">
+                No trainer availability in the next month without conflicts.
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label">Capacity</label>
+            <input type="number"
+                   min="1"
+                   name="capacity"
+                   value="{{ editing_class.capacity if editing_class else 15 }}"
+                   class="form-control"
+                   required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Price (USD)</label>
+            <input type="number"
+                   min="1"
+                   step="0.01"
+                   name="price"
+                   value="{{ editing_class.price|float if editing_class else 45 }}"
+                   class="form-control"
+                   required>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-primary w-100" type="submit">
+              {% if editing_class %}Save Changes{% else %}Create Class{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Scheduled Classes</strong>
+        <small class="text-muted">Total {{ classes|length }}</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Trainer</th>
+                <th>Room</th>
+                <th>Start</th>
+                <th>Seats</th>
+                <th>Price</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for cls in classes %}
+              {% set enrolled = cls.registrations|length %}
+              <tr>
+                <td>{{ cls.class_id }}</td>
+                <td>{{ cls.name }}</td>
+                <td>{{ cls.trainer.first_name }} {{ cls.trainer.last_name }}</td>
+                <td>{{ cls.room.name if cls.room else ("Room " ~ cls.room_id) }}</td>
+                <td>{{ cls.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>{{ enrolled }}/{{ cls.capacity }}</td>
+                <td>${{ "%.2f"|format(cls.price or 0) }}</td>
+                <td>
+                  <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="{{ url_for('admin_class_management', trainer_id=cls.trainer_id, edit_class_id=cls.class_id) }}">
+                      Edit
+                    </a>
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="{{ url_for('admin_room_booking') }}#class-{{ cls.class_id }}">
+                      Reschedule
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="8" class="text-center text-muted py-3">No classes scheduled.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer text-muted small">
+        Need to move a class? Use the Room Booking page to reschedule / reassign rooms.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

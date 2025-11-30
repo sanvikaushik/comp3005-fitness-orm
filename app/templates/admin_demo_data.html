@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center section-block">
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header text-center">
+        Demo Data Controls
+      </div>
+      <div class="card-body">
+        <p class="table-note text-center mb-4">
+          Use these options to reset the database or load the curated demo set
+          (5 members, 3 trainers, scheduled sessions, rooms, and equipment logs).
+        </p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <form method="post">
+              <input type="hidden" name="action" value="clear">
+              <button type="submit" class="btn btn-outline-danger w-100">
+                Clear All Data
+              </button>
+            </form>
+          </div>
+          <div class="col-md-6">
+            <form method="post">
+              <input type="hidden" name="action" value="seed">
+              <button type="submit" class="btn btn-outline-success w-100">
+                Reset & Seed Demo Data
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-info mb-0">
+      <strong>What gets created?</strong>
+      <ul class="mb-0">
+        <li>5 members with rotating private sessions.</li>
+        <li>3 trainers, each with rooms, availability, PT sessions, and classes.</li>
+        <li>Equipment inventory plus active maintenance issues.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
