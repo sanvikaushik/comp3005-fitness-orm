@@ -69,15 +69,13 @@ pip install -r requirements.txt
 
 ## 4. Configure your database connection
 
-Create a `.env` file:
+Copy the template and set your own credentials (the repo ships with **`.env.example`** so clones don't immediately fail):
 
+```bash
+cp .env.example .env
 ```
-DB_USER=sanvikaushik
-DB_PASSWORD=
-DB_NAME=fitness_club
-DB_HOST=127.0.0.1
-DB_PORT=5432
-```
+
+Then edit `.env` with the DB user/password/host for your machine. Leave the original template untouched so teammates can clone without editing tracked files.
 
 ---
 
@@ -164,5 +162,4 @@ Confirms correctness of:
 - ORM model mapping  
 
 ---
-
 
