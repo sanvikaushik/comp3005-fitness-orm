@@ -60,12 +60,18 @@ cd comp3005-fitness-orm
 python3 -m venv .venv
 source .venv/bin/activate
 ```
+or 
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+```
 
 ## 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
+
 
 ## 4. Configure your database connection
 
