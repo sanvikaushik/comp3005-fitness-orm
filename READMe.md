@@ -65,7 +65,10 @@ or
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
-
+and
+```powershell
+py -m pip install sqlalchemy
+```
 ## 3. Install dependencies
 
 ```bash
