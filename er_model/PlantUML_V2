@@ -1,0 +1,184 @@
+@startuml
+
+' ==========
+'  ENTITIES
+' ==========
+
+class Member {
+  +MemberID : INT
+  +FirstName : VARCHAR
+  +LastName  : VARCHAR
+  +Email     : VARCHAR
+  +PhoneNumber : VARCHAR
+  +DateOfBirth : DATE
+  +Gender      : VARCHAR
+}
+
+class Trainer {
+  +TrainerID : INT
+  +FirstName : VARCHAR
+  +LastName  : VARCHAR
+  +Email     : VARCHAR
+  +PhoneNumber : VARCHAR
+  +Specialization : VARCHAR
+  +IsActive : BOOLEAN
+}
+
+class AdministrativeStaff {
+  +StaffID : INT
+  +FirstName : VARCHAR
+  +LastName  : VARCHAR
+  +Email     : VARCHAR
+  +Password  : VARCHAR
+}
+
+class Room {
+  +RoomID   : INT
+  +RoomName : VARCHAR
+  +Capacity : INT
+}
+
+class Equipment {
+  +EquipmentID : INT
+  +RoomID      : INT
+  +Name        : VARCHAR
+  +Status      : VARCHAR
+  +LastServicedDate : DATE
+}
+
+class HealthMetric {
+  +MetricID   : INT
+  +MemberID   : INT
+  +RecordedAt : TIMESTAMP
+  +Weight     : NUMERIC
+  +Height     : NUMERIC
+  +TargetWeight : NUMERIC
+  +HeartRate  : INT
+}
+
+class ClassSchedule {
+  +ClassID    : INT
+  +ClassName  : VARCHAR
+  +TrainerID  : INT
+  +RoomID     : INT
+  +DayOfWeek  : INT
+  +StartTime  : TIME
+  +MaxCapacity : INT
+}
+
+class ClassRegistration {
+  +RegistrationID   : INT
+  +MemberID         : INT
+  +ClassID          : INT
+  +DateRegistration : DATE
+}
+
+class PrivateSession {
+  +SessionID   : INT
+  +MemberID    : INT
+  +TrainerID   : INT
+  +RoomID      : INT
+  +SessionDate : DATE
+  +SessionTime : TIME
+  +ActivityType : VARCHAR
+  +IsConflict   : BOOLEAN
+}
+
+class Payment {
+  +PaymentID   : INT
+  +MemberID    : INT
+  +StaffID     : INT
+  +Amount      : NUMERIC
+  +PaymentDate : DATE
+  +PaymentType : VARCHAR
+  +Notes       : VARCHAR
+}
+
+class TrainerAvailability {
+  +AvailabilityID : INT
+  +TrainerID      : INT
+  +DayOfWeek      : INT
+  +StartTime      : TIME
+  +EndTime        : TIME
+  +IsRecurring    : BOOLEAN
+}
+
+class EquipmentMaintenance {
+  +MaintenanceID : INT
+  +EquipmentID   : INT
+  +StaffID       : INT
+  +ReportedAt    : TIMESTAMP
+  +Description   : VARCHAR
+  +Status        : VARCHAR
+  +ResolvedAt    : TIMESTAMP
+}
+
+' ==========================================
+'   RELATIONSHIP "DIAMOND" ENTITIES
+' ==========================================
+
+entity "records"            as R1 <<relationship>> { }
+entity "registersFor"       as R2 <<relationship>> { }
+entity "teaches"            as R3 <<relationship>> { }
+entity "usesRoom"           as R4 <<relationship>> { }
+entity "contains"           as R5 <<relationship>> { }
+entity "books"              as R6 <<relationship>> { }
+entity "processes"          as R7 <<relationship>> { }
+entity "availabilitySlots"  as R8 <<relationship>> { }
+entity "maintenanceReport"  as R9 <<relationship>> { }
+
+skinparam entity {
+    BackgroundColor White
+    BorderColor Black
+}
+skinparam stereotypeC {
+    BackgroundColor Black
+    BorderColor Black
+}
+
+' ==========================================
+'    RELATIONSHIPS WITH CARDINALITIES
+' ==========================================
+
+' MEMBER – HEALTH METRIC
+Member "1" -- "N" R1
+R1    "1" -- "N" HealthMetric
+
+' MEMBER – CLASS – REGISTRATION
+Member        "1" -- "N" R2
+ClassSchedule "1" -- "N" R2
+R2            "1" -- "N" ClassRegistration
+
+' TRAINER – CLASS
+Trainer "1" -- "N" R3
+R3      "1" -- "N" ClassSchedule
+
+' ROOM – CLASS
+Room "1" -- "N" R4
+R4   "1" -- "N" ClassSchedule
+
+' ROOM – EQUIPMENT
+Room "1" -- "N" R5
+R5   "1" -- "N" Equipment
+
+' MEMBER – TRAINER – ROOM – PRIVATE SESSION
+Member  "1" -- "N" R6
+Trainer "1" -- "N" R6
+Room    "1" -- "N" R6
+R6      "1" -- "N" PrivateSession
+
+' PAYMENT — STAFF — MEMBER
+Member              "1" -- "N" R7
+AdministrativeStaff "1" -- "N" R7
+R7                  "1" -- "N" Payment
+
+' TRAINER – TRAINER AVAILABILITY
+Trainer "1" -- "N" R8
+R8      "1" -- "N" TrainerAvailability
+
+' EQUIPMENT MAINTENANCE — STAFF — EQUIPMENT
+Equipment           "1" -- "N" R9
+AdministrativeStaff "1" -- "N" R9
+R9                  "1" -- "N" EquipmentMaintenance
+
+@enduml
