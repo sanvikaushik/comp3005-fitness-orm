@@ -15,7 +15,13 @@ if not DATABASE_URL:
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    future=True,
+    expire_on_commit=False,
+)
 
 Base = declarative_base()
 

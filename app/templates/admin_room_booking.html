@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Admin • Room Booking & Scheduling</h1>
+<p class="text-muted mb-4">
+  Assign rooms for private sessions or group classes. Forms below reuse the same safeguards
+  that prevent double-booking trainers or rooms.
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Upcoming Private Sessions</strong>
+        <small class="text-muted">Next {{ sessions|length }} results</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Member</th>
+                <th>Trainer</th>
+                <th>Room</th>
+                <th>Start</th>
+                <th>End</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for ps in sessions %}
+              <tr>
+                <td>#{{ ps.session_id }}</td>
+                <td>
+                  {{ ps.member.first_name }} {{ ps.member.last_name }}
+                  <span class="text-muted">(#{{ ps.member.member_id }})</span>
+                </td>
+                <td>
+                  {{ ps.trainer.first_name }} {{ ps.trainer.last_name }}
+                  <span class="text-muted">(#{{ ps.trainer.trainer_id }})</span>
+                </td>
+                <td>{{ ps.room.name if ps.room else ("Room " ~ ps.room_id) }}</td>
+                <td>{{ ps.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>{{ ps.end_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-3">No scheduled sessions.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('admin_reassign_session') }}" class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Session</label>
+            <select class="form-select" name="session_id" required>
+              {% for ps in sessions %}
+                <option value="{{ ps.session_id }}">
+                  #{{ ps.session_id }} – {{ ps.member.first_name }} w/ {{ ps.trainer.first_name }}
+                  ({{ ps.start_time.strftime("%m/%d %I:%M %p") }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">New Room</label>
+            <select class="form-select" name="new_room_id" required>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">#{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Week Slot (current week)</label>
+            <select class="form-select" name="slot_start">
+              <option value="">Keep current session time</option>
+              {% for week in time_slots|groupby('week_label') %}
+                <optgroup label="{{ week.grouper }}">
+                  {% for slot in week.list %}
+                    <option value="{{ slot.value }}">
+                      {{ slot.day_label }} – {{ slot.time_label }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Assign Room</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Upcoming Classes</strong>
+        <small class="text-muted">Next {{ classes|length }} results</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Trainer</th>
+                <th>Room</th>
+                <th>Start</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for cls in classes %}
+              <tr>
+                <td>#{{ cls.class_id }}</td>
+                <td>{{ cls.name }}</td>
+                <td>
+                  {{ cls.trainer.first_name }} {{ cls.trainer.last_name }}
+                  <span class="text-muted">(#{{ cls.trainer.trainer_id }})</span>
+                </td>
+                <td>{{ cls.room.name if cls.room else ("Room " ~ cls.room_id) }}</td>
+                <td>{{ cls.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No classes scheduled.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('admin_reschedule_class_view') }}" class="row g-2">
+          <div class="col-12">
+            <label class="form-label">Class</label>
+            <select class="form-select" name="class_id" required>
+              {% for cls in classes %}
+                <option value="{{ cls.class_id }}">
+                  #{{ cls.class_id }} – {{ cls.name }} ({{ cls.start_time.strftime("%m/%d %I:%M %p") }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">New Room</label>
+            <select class="form-select" name="new_room_id" required>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">#{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Week Slot (next 4 weeks)</label>
+            <select class="form-select" name="slot_start" required>
+              {% for week in time_slots|groupby('week_label') %}
+                <optgroup label="{{ week.grouper }}">
+                  {% for slot in week.list %}
+                    <option value="{{ slot.value }}">
+                      {{ slot.day_label }} – {{ slot.time_label }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <small class="text-muted">All classes run for 60 minutes.</small>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary mt-2" type="submit">Reschedule Class</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

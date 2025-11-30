@@ -3,11 +3,16 @@ from datetime import datetime, timedelta
 import pytest
 
 from models.scheduling import Trainer, Room, ClassSchedule
+from models.equipment import Equipment
 from app.member_service import create_member, book_private_session
 from app.admin_service import (
     admin_reassign_session_room,
     admin_reschedule_class,
+    create_equipment,
+    log_equipment_issue,
+    update_equipment_issue_status,
 )
+from tests.helpers import add_trainer_availability
 
 
 def _setup_trainer_room_member(session):
@@ -25,6 +30,7 @@ def _setup_trainer_room_member(session):
     session.refresh(trainer)
     session.refresh(room1)
     session.refresh(room2)
+    add_trainer_availability(session, trainer)
     return trainer, room1, room2, member
 
 def test_admin_reassign_session_room_no_conflict(session):
@@ -32,7 +38,7 @@ def test_admin_reassign_session_room_no_conflict(session):
     now = datetime.utcnow()
 
     # Original session in room1
-    start = now + timedelta(days=1)
+    start = (now + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
     end = start + timedelta(hours=1)
     ps = book_private_session(
         session,
@@ -57,7 +63,7 @@ def test_admin_reschedule_class_with_conflict_and_success(session):
     now = datetime.utcnow()
 
     # Existing class in room1
-    start1 = now + timedelta(days=1)
+    start1 = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
     end1 = start1 + timedelta(hours=1)
     cls1 = ClassSchedule(
         name="Existing Class",
@@ -114,3 +120,36 @@ def test_admin_reschedule_class_with_conflict_and_success(session):
     assert updated.room_id == room1.room_id
     assert updated.start_time == ok_start
     assert updated.end_time == ok_end
+
+def test_equipment_issue_logging(session):
+    trainer, room1, room2, member = _setup_trainer_room_member(session)
+
+    equipment = create_equipment(
+        session,
+        name="Treadmill A",
+        status="operational",
+        notes="Fresh install",
+        room_id=room1.room_id,
+        trainer_id=trainer.trainer_id,
+    )
+    assert isinstance(equipment, Equipment)
+    assert equipment.room_id == room1.room_id
+    assert equipment.trainer_id == trainer.trainer_id
+
+    issue = log_equipment_issue(
+        session,
+        equipment_id=equipment.equipment_id,
+        room_id=room1.room_id,
+        description="Belt slipping",
+    )
+    assert issue.issue_id is not None
+    assert issue.status == "open"
+
+    updated_issue = update_equipment_issue_status(
+        session,
+        issue_id=issue.issue_id,
+        new_status="resolved",
+        resolved=True,
+    )
+    assert updated_issue.status == "resolved"
+    assert updated_issue.resolved_at is not None

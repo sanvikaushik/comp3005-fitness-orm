@@ -7,6 +7,7 @@ from sqlalchemy import (
     Time,
     ForeignKey,
     Boolean,
+    Numeric,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,12 +44,18 @@ class Room(Base):
     room_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    primary_trainer_id: Mapped[int | None] = mapped_column(ForeignKey("trainer.trainer_id"), nullable=True)
 
     private_sessions: Mapped[list["PrivateSession"]] = relationship(
         back_populates="room", cascade="all, delete-orphan"
     )
     classes: Mapped[list["ClassSchedule"]] = relationship(
         back_populates="room", cascade="all, delete-orphan"
+    )
+    primary_trainer: Mapped["Trainer | None"] = relationship(
+        "Trainer",
+        backref="primary_rooms",
+        foreign_keys=[primary_trainer_id],
     )
 
 
@@ -79,6 +86,7 @@ class ClassSchedule(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    price: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=50)
 
     trainer: Mapped["Trainer"] = relationship(back_populates="classes")
     room: Mapped["Room"] = relationship(back_populates="classes")

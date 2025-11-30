@@ -53,13 +53,12 @@ class HealthMetric(Base):
     member_id: Mapped[int] = mapped_column(
         ForeignKey("member.member_id"),
         nullable=False,
-        # ❗ IMPORTANT: do NOT set unique=True here
     )
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=func.now(),
+        default=datetime.utcnow,  
     )
 
     weight: Mapped[float | None] = mapped_column(Float, nullable=True)
