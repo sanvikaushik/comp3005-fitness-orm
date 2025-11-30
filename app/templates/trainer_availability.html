@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Set Availability – Trainer {{ trainer_id }}</h1>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Day of Week</label>
+        <select name="day_of_week" class="form-select" required>
+          <option value="0">Monday</option>
+          <option value="1">Tuesday</option>
+          <option value="2">Wednesday</option>
+          <option value="3">Thursday</option>
+          <option value="4">Friday</option>
+          <option value="5">Saturday</option>
+          <option value="6">Sunday</option>
+        </select>
+      </div>
+        <div class="col-md-4">
+            <label class="form-label">Start (HH:MM)</label>
+            <input
+                type="time"
+                name="start_time"
+                class="form-control"
+                required
+            >
+            </div>
+            <div class="col-md-4">
+            <label class="form-label">End (HH:MM)</label>
+            <input
+                type="time"
+                name="end_time"
+                class="form-control"
+                required
+            >
+        </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

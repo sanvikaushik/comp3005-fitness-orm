@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Member Dashboard</h1>
+
+<div class="row">
+  <!-- Profile card -->
+  <div class="col-md-4 mb-3">
+  <div class="card shadow-sm">
+    <div class="card-header">Profile / Goals</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('member_update_profile', member_id=member.member_id) }}" class="row g-2">
+        <div class="col-12">
+          <label class="form-label">First Name</label>
+          <input name="first_name" class="form-control" value="{{ member.first_name }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Last Name</label>
+          <input name="last_name" class="form-control" value="{{ member.last_name }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Email</label>
+          <input name="email" type="email" class="form-control" value="{{ member.email }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Target Weight (kg)</label>
+          <input name="target_weight" class="form-control"
+                 value="{{ dashboard.profile.target_weight or '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Notes</label>
+          <input name="notes" class="form-control" value="{{ dashboard.profile.notes or '' }}">
+        </div>
+        <div class="col-12 mt-2">
+          <button class="btn btn-primary w-100" type="submit">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Latest metric + log form -->
+  <div class="col-md-8 mb-3">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Latest Health Metric</div>
+      <div class="card-body">
+        {% if dashboard.latest_health_metric %}
+          {% set hm = dashboard.latest_health_metric %}
+          <table class="table table-sm mb-2">
+            <thead class="table-light">
+              <tr>
+                <th>Weight (kg)</th>
+                <th>Heart Rate</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{{ hm.weight }}</td>
+                <td>{{ hm.heart_rate }}</td>
+                <td>{{ hm.timestamp }}</td>
+              </tr>
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-muted mb-2">No metrics yet.</p>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('member_add_metric', member_id=member.member_id) }}" class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Weight (kg)</label>
+            <input name="weight" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Heart Rate</label>
+            <input name="heart_rate" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-outline-primary w-100" type="submit">Log Metric</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card shadow-sm">
+      <div class="card-header">Stats</div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-md-4">
+            <h4>{{ dashboard.stats.past_classes_attended }}</h4>
+            <div class="text-muted">Past Classes Attended</div>
+          </div>
+          <div class="col-md-4">
+            <h4>{{ dashboard.stats.upcoming_private_session_count }}</h4>
+            <div class="text-muted">Upcoming PT Sessions</div>
+          </div>
+          <div class="col-md-4">
+            <h4>{{ dashboard.stats.upcoming_class_count }}</h4>
+            <div class="text-muted">Upcoming Classes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sessions + Classes -->
+<div class="row mt-3">
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Upcoming Private Sessions</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Start</th><th>End</th><th>Room</th><th>Trainer</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for ps in dashboard.upcoming_private_sessions %}
+            <tr>
+              <td>{{ ps.start_time }}</td>
+              <td>{{ ps.end_time }}</td>
+              <td>{{ ps.room_id }}</td>
+              <td>{{ ps.trainer_id }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-muted text-center">None scheduled.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('member_book_session', member_id=member.member_id) }}" class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label">Trainer ID</label>
+            <input name="trainer_id" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Room ID</label>
+            <input name="room_id" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+          <div class="col-md-3">
+            <label class="form-label">Start</label>
+            <input
+              type="datetime-local"
+              name="start_time"
+              class="form-control"
+              required
+            >
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">End</label>
+            <input
+              type="datetime-local"
+              name="end_time"
+              class="form-control"
+              required
+            >
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-outline-primary w-100" type="submit">Book PT Session</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Upcoming Classes (Registered)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th><th>Start</th><th>Room</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for cls in dashboard.upcoming_classes %}
+            <tr>
+              <td>{{ cls.name }}</td>
+              <td>{{ cls.start_time }}</td>
+              <td>{{ cls.room_id }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="text-muted text-center">No upcoming classes.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('member_register_class', member_id=member.member_id) }}" class="row g-2">
+          <div class="col-12">
+            <label class="form-label">Register for Upcoming Class</label>
+            <select name="class_id" class="form-select">
+              {% for cls in upcoming_classes %}
+                <option value="{{ cls.class_id }}">
+                  {{ cls.class_id }} – {{ cls.name }} ({{ cls.start_time }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-outline-primary w-100" type="submit">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

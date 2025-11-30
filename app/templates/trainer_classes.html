@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">
+  Manage Classes – {{ trainer.first_name }} {{ trainer.last_name }} (ID {{ trainer.trainer_id }})
+</h1>
+
+<div class="row">
+  <!-- Existing classes table -->
+  <div class="col-md-7 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Existing Classes</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Room</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Capacity</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for cls in classes %}
+            <tr>
+              <td>{{ cls.class_id }}</td>
+              <td>{{ cls.name }}</td>
+              <td>{{ cls.room_id }}</td>
+              <td>{{ cls.start_time }}</td>
+              <td>{{ cls.end_time }}</td>
+              <td>{{ cls.capacity }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-muted text-center">
+                No classes for this trainer yet.
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer small text-muted">
+        To update an existing class, enter its ID in the form on the right.
+      </div>
+    </div>
+  </div>
+
+  <!-- Create / update form -->
+  <div class="col-md-5 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Create / Update Class</div>
+      <div class="card-body">
+        <form method="post" class="row g-2">
+          <div class="col-12">
+            <label class="form-label">Class ID (leave blank to create new)</label>
+            <input name="class_id" class="form-control" placeholder="e.g. 1 (for update)">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Name</label>
+            <input name="name" class="form-control" placeholder="e.g. Morning Yoga" required>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Room</label>
+            <select name="room_id" class="form-select" required>
+              {% for room in rooms %}
+                <option value="{{ room.room_id }}">{{ room.room_id }} – {{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Start Time</label>
+            <input
+                type="datetime-local"
+                name="start_time"
+                class="form-control"
+                required
+            >
+            </div>
+            <div class="col-md-6">
+            <label class="form-label">End Time</label>
+            <input
+                type="datetime-local"
+                name="end_time"
+                class="form-control"
+                required
+            >
+        </div>
+          <div class="col-12">
+            <label class="form-label">Capacity</label>
+            <input name="capacity" class="form-control" placeholder="e.g. 20" required>
+          </div>
+
+          <div class="col-12 mt-2">
+            <button class="btn btn-primary w-100" type="submit">
+              Save Class
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer small text-muted">
+        - Leave Class ID blank to create a new class.<br>
+        - Provide an existing Class ID to update that class (name, room, times, capacity).
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

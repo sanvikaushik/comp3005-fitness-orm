@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Members for Trainer {{ trainer_id }}</h1>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-6">
+    <label class="form-label">Search by Name</label>
+    <input name="q" value="{{ query }}" class="form-control" placeholder="e.g. Bob">
+  </div>
+  <div class="col-md-2 d-flex align-items-end">
+    <button class="btn btn-primary w-100" type="submit">Search</button>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Member</th>
+          <th>Goal (Target Weight)</th>
+          <th>Notes</th>
+          <th>Latest Metric</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for info in results %}
+        <tr>
+          <td>{{ info.member.first_name }} {{ info.member.last_name }}</td>
+          <td>{{ info.target_weight or "—" }}</td>
+          <td>{{ info.notes or "—" }}</td>
+          <td>
+            {% if info.latest_metric %}
+              {{ info.latest_metric.weight }} kg @ {{ info.latest_metric.timestamp }}
+            {% else %}
+              <span class="text-muted">No metrics</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        {% if query %}
+          <tr><td colspan="4" class="text-muted text-center">No matching members.</td></tr>
+        {% else %}
+          <tr><td colspan="4" class="text-muted text-center">Enter a name to search.</td></tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

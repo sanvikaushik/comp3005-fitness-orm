@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">
+  Trainer Schedule – {{ schedule.trainer.first_name }} {{ schedule.trainer.last_name }}
+</h1>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Upcoming Private Sessions</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Start</th><th>End</th><th>Member</th><th>Room</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for ps in schedule.upcoming_private_sessions %}
+            <tr>
+              <td>{{ ps.start_time }}</td>
+              <td>{{ ps.end_time }}</td>
+              <td>{{ ps.member.first_name }} {{ ps.member.last_name }}</td>
+              <td>{{ ps.room_id }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-muted text-center">No upcoming sessions.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header">Upcoming Classes</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Start</th><th>Name</th><th>Room</th></tr>
+          </thead>
+          <tbody>
+          {% for cls in schedule.upcoming_classes %}
+            <tr>
+              <td>{{ cls.start_time }}</td>
+              <td>{{ cls.name }}</td>
+              <td>{{ cls.room.name if cls.room else cls.room_id }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="text-muted text-center">No upcoming classes.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
