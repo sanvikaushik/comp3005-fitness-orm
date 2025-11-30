@@ -1,4 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+
+import pytest
+from sqlalchemy import select
 
 from app.member_service import (
     create_member,
@@ -12,6 +15,8 @@ from app.member_service import (
     get_member_dashboard,
 )
 from models.scheduling import Trainer, Room, ClassSchedule, ClassRegistration
+from models.payment import BillingItem
+from tests.helpers import add_trainer_availability
 
 
 def test_create_and_update_member(session):
@@ -43,13 +48,17 @@ def test_log_and_view_health_metrics(session):
     assert history[0].weight == 69.5
 
 
-def _setup_trainer_room_and_class(session):
+def _setup_trainer_room_and_class(session, availability_windows=None):
     trainer = Trainer(first_name="Tina", last_name="Trainer", email="tina@example.com")
     room = Room(name="Room A", capacity=10)
     session.add_all([trainer, room])
     session.commit()
     session.refresh(trainer)
     session.refresh(room)
+    if availability_windows is None:
+        add_trainer_availability(session, trainer)
+    else:
+        add_trainer_availability(session, trainer, windows=availability_windows)
     return trainer, room
 
 
@@ -62,7 +71,7 @@ def test_book_private_session_no_conflicts(session):
     )
     trainer, room = _setup_trainer_room_and_class(session)
 
-    start = datetime.utcnow() + timedelta(days=1, hours=1)
+    start = (datetime.utcnow() + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
     end = start + timedelta(hours=1)
 
     private = book_private_session(
@@ -77,6 +86,83 @@ def test_book_private_session_no_conflicts(session):
     assert private.session_id is not None
 
 
+def test_book_private_session_conflicts_with_member_class(session):
+    member = create_member(
+        session,
+        first_name="Gina",
+        last_name="Member",
+        email="gina@example.com",
+    )
+    trainer, room = _setup_trainer_room_and_class(session)
+
+    start = (datetime.utcnow() + timedelta(days=1)).replace(hour=11, minute=0, second=0, microsecond=0)
+    end = start + timedelta(hours=1)
+
+    cls = ClassSchedule(
+        name="Pilates",
+        trainer_id=trainer.trainer_id,
+        room_id=room.room_id,
+        start_time=start,
+        end_time=end,
+        capacity=10,
+    )
+    session.add(cls)
+    session.commit()
+    session.refresh(cls)
+
+    session.add(ClassRegistration(member_id=member.member_id, class_id=cls.class_id))
+    session.commit()
+
+    with pytest.raises(ValueError, match="class"):
+        book_private_session(
+            session,
+            member_id=member.member_id,
+            trainer_id=trainer.trainer_id,
+            room_id=room.room_id,
+            start_time=start,
+            end_time=end,
+        )
+
+
+def test_book_private_session_conflicts_with_member_other_session(session):
+    member = create_member(
+        session,
+        first_name="Helen",
+        last_name="Member",
+        email="helen@example.com",
+    )
+    trainer1, room1 = _setup_trainer_room_and_class(session)
+    trainer2 = Trainer(first_name="Nina", last_name="Coach", email="nina.coach@example.com")
+    room2 = Room(name="Room B", capacity=8)
+    session.add_all([trainer2, room2])
+    session.commit()
+    session.refresh(trainer2)
+    session.refresh(room2)
+    add_trainer_availability(session, trainer2)
+
+    start = (datetime.utcnow() + timedelta(days=2)).replace(hour=14, minute=0, second=0, microsecond=0)
+    end = start + timedelta(hours=1)
+
+    book_private_session(
+        session,
+        member_id=member.member_id,
+        trainer_id=trainer1.trainer_id,
+        room_id=room1.room_id,
+        start_time=start,
+        end_time=end,
+    )
+
+    with pytest.raises(ValueError, match="private session"):
+        book_private_session(
+            session,
+            member_id=member.member_id,
+            trainer_id=trainer2.trainer_id,
+            room_id=room2.room_id,
+            start_time=start,
+            end_time=end,
+        )
+
+
 def test_group_class_registration_with_capacity(session):
     member = create_member(
         session,
@@ -86,7 +172,7 @@ def test_group_class_registration_with_capacity(session):
     )
     trainer, room = _setup_trainer_room_and_class(session)
 
-    start = datetime.utcnow() + timedelta(days=1)
+    start = (datetime.utcnow() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
     end = start + timedelta(hours=1)
 
     # create one class
@@ -115,10 +201,120 @@ def test_group_class_registration_with_capacity(session):
         last_name="Member",
         email="eva@example.com",
     )
-    from pytest import raises
 
-    with raises(ValueError, match="Class is full"):
+    with pytest.raises(ValueError, match="Class is full"):
         register_for_class(session, member_id=member2.member_id, class_id=cls.class_id)
+
+
+def test_book_private_session_rejects_unavailable_window(session):
+    member = create_member(
+        session,
+        first_name="Unavailable",
+        last_name="Member",
+        email="unavailable@example.com",
+    )
+    desired_start = (datetime.utcnow() + timedelta(days=2)).replace(hour=12, minute=0, second=0, microsecond=0)
+    desired_end = desired_start + timedelta(hours=1)
+    limited_windows = [
+        (desired_start.weekday(), time(6, 0), time(7, 0)),
+    ]
+    trainer, room = _setup_trainer_room_and_class(session, availability_windows=limited_windows)
+
+    with pytest.raises(ValueError, match="available"):
+        book_private_session(
+            session,
+            member_id=member.member_id,
+            trainer_id=trainer.trainer_id,
+            room_id=room.room_id,
+            start_time=desired_start,
+            end_time=desired_end,
+        )
+
+
+def test_register_for_class_requires_trainer_availability(session):
+    member = create_member(
+        session,
+        first_name="Classy",
+        last_name="Member",
+        email="classy@example.com",
+    )
+    base_start = (datetime.utcnow() + timedelta(days=3)).replace(minute=0, second=0, microsecond=0)
+    window_day = base_start.weekday()
+    windows = [
+        (window_day, time(9, 0), time(11, 0)),
+    ]
+    trainer, room = _setup_trainer_room_and_class(session, availability_windows=windows)
+
+    inside_start = base_start.replace(hour=9)
+    inside_end = inside_start + timedelta(hours=1)
+    cls_ok = ClassSchedule(
+        name="Morning Sculpt",
+        trainer_id=trainer.trainer_id,
+        room_id=room.room_id,
+        start_time=inside_start,
+        end_time=inside_end,
+        capacity=5,
+    )
+    session.add(cls_ok)
+    session.commit()
+    session.refresh(cls_ok)
+
+    outside_start = base_start.replace(hour=13)
+    outside_end = outside_start + timedelta(hours=1)
+    cls_bad = ClassSchedule(
+        name="Afternoon Spin",
+        trainer_id=trainer.trainer_id,
+        room_id=room.room_id,
+        start_time=outside_start,
+        end_time=outside_end,
+        capacity=5,
+    )
+    session.add(cls_bad)
+    session.commit()
+    session.refresh(cls_bad)
+
+    reg = register_for_class(session, member_id=member.member_id, class_id=cls_ok.class_id)
+    assert reg.registration_id is not None
+
+    with pytest.raises(ValueError, match="available"):
+        register_for_class(session, member_id=member.member_id, class_id=cls_bad.class_id)
+
+
+def test_register_for_class_creates_billing_item(session):
+    member = create_member(
+        session,
+        first_name="Bill",
+        last_name="Able",
+        email="bill@example.com",
+    )
+    trainer, room = _setup_trainer_room_and_class(session)
+
+    start = (datetime.utcnow() + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+    end = start + timedelta(hours=1)
+    cls = ClassSchedule(
+        name="Strength",
+        trainer_id=trainer.trainer_id,
+        room_id=room.room_id,
+        start_time=start,
+        end_time=end,
+        capacity=10,
+        price=75,
+    )
+    session.add(cls)
+    session.commit()
+    session.refresh(cls)
+
+    register_for_class(session, member_id=member.member_id, class_id=cls.class_id)
+
+    bill = session.scalar(
+        select(BillingItem).where(
+            BillingItem.member_id == member.member_id,
+            BillingItem.class_id == cls.class_id,
+        )
+    )
+    assert bill is not None
+    assert float(bill.amount) == 75
+    assert bill.status == "pending"
 
 def test_member_dashboard(session):
     # Setup: create member, trainer, room
@@ -137,6 +333,7 @@ def test_member_dashboard(session):
     session.commit()
     session.refresh(trainer)
     session.refresh(room)
+    add_trainer_availability(session, trainer)
 
     now = datetime.utcnow()
 
@@ -200,7 +397,7 @@ def test_member_dashboard(session):
     session.commit()
 
     # Upcoming private session
-    private_start = now + timedelta(days=1)
+    private_start = (now + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
     private_end = private_start + timedelta(hours=1)
     ps = book_private_session(
         session,

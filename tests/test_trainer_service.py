@@ -10,20 +10,23 @@ from app.trainer_service import (
     lookup_trainer_members,
     create_or_update_class, 
 )
+from tests.helpers import add_trainer_availability
 
 
-def _setup_trainer_and_room(session):
+def _setup_trainer_and_room(session, *, seed_availability=True, availability_windows=None):
     trainer = Trainer(first_name="Tina", last_name="Trainer", email="trainer@example.com")
     room = Room(name="T Room", capacity=10)
     session.add_all([trainer, room])
     session.commit()
     session.refresh(trainer)
     session.refresh(room)
+    if seed_availability:
+        add_trainer_availability(session, trainer, windows=availability_windows)
     return trainer, room
 
 
 def test_set_trainer_availability_no_overlap(session):
-    trainer, _ = _setup_trainer_and_room(session)
+    trainer, _ = _setup_trainer_and_room(session, seed_availability=False)
 
     # First availability
     a1 = set_trainer_availability(
@@ -47,7 +50,7 @@ def test_set_trainer_availability_no_overlap(session):
 
 
 def test_set_trainer_availability_overlap_fails(session):
-    trainer, _ = _setup_trainer_and_room(session)
+    trainer, _ = _setup_trainer_and_room(session, seed_availability=False)
 
     set_trainer_availability(
         session,
@@ -80,7 +83,7 @@ def test_get_trainer_schedule(session):
     now = datetime.utcnow()
 
     # Upcoming private session
-    ps_start = now + timedelta(days=1)
+    ps_start = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
     ps_end = ps_start + timedelta(hours=1)
     ps = book_private_session(
         session,
@@ -92,7 +95,7 @@ def test_get_trainer_schedule(session):
     )
 
     # Upcoming class
-    cls_start = now + timedelta(days=2)
+    cls_start = (now + timedelta(days=2)).replace(hour=11, minute=0, second=0, microsecond=0)
     cls_end = cls_start + timedelta(hours=1)
     cls = ClassSchedule(
         name="Trainer Yoga",
@@ -136,7 +139,7 @@ def test_lookup_trainer_members(session):
 
     now = datetime.utcnow()
     # PT session with Bob
-    ps_start = now + timedelta(days=1)
+    ps_start = (now + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
     ps_end = ps_start + timedelta(hours=1)
     book_private_session(
         session,
@@ -148,7 +151,7 @@ def test_lookup_trainer_members(session):
     )
 
     # Class with Charlie, taught by trainer
-    cls_start = now + timedelta(days=2)
+    cls_start = (now + timedelta(days=2)).replace(hour=12, minute=0, second=0, microsecond=0)
     cls_end = cls_start + timedelta(hours=1)
     cls = ClassSchedule(
         name="Speed Class",
@@ -190,7 +193,7 @@ def test_create_class_no_conflicts(session):
     now = datetime.utcnow()
 
     # First class
-    start1 = now + timedelta(days=1)
+    start1 = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
     end1 = start1 + timedelta(hours=1)
     cls1 = create_or_update_class(
         session,
@@ -200,6 +203,7 @@ def test_create_class_no_conflicts(session):
         capacity=15,
         start_time=start1,
         end_time=end1,
+        price=40.0,
     )
     assert cls1.class_id is not None
     assert cls1.name == "Morning Yoga"
@@ -215,6 +219,7 @@ def test_create_class_no_conflicts(session):
         capacity=20,
         start_time=start2,
         end_time=end2,
+        price=45.0,
     )
     assert cls2.class_id is not None
     assert cls2.name == "Evening Yoga"
@@ -225,7 +230,7 @@ def test_create_class_with_conflict_fails(session):
     now = datetime.utcnow()
 
     # Existing class
-    start1 = now + timedelta(days=1)
+    start1 = (now + timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
     end1 = start1 + timedelta(hours=1)
     create_or_update_class(
         session,
@@ -235,6 +240,7 @@ def test_create_class_with_conflict_fails(session):
         capacity=10,
         start_time=start1,
         end_time=end1,
+        price=50.0,
     )
 
     # Overlapping class in same room & trainer should fail
@@ -250,4 +256,5 @@ def test_create_class_with_conflict_fails(session):
             capacity=12,
             start_time=start2,
             end_time=end2,
+            price=55.0,
         )
