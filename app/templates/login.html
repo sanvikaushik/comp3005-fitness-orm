@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+{% set member_accounts = demo_accounts|selectattr('role','equalto','member')|list %}
+{% set trainer_accounts = demo_accounts|selectattr('role','equalto','trainer')|list %}
+{% set admin_accounts = demo_accounts|selectattr('role','equalto','admin')|list %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-7 col-md-9">
+    <!-- Login form -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <strong>Login</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('login') }}" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Username</label>
+            <input
+              type="text"
+              name="username"
+              class="form-control"
+              required
+              placeholder="e.g. member1"
+            >
+          </div>
+          <div class="col-12">
+            <label class="form-label">Password</label>
+            <input
+              type="password"
+              name="password"
+              class="form-control"
+              required
+              placeholder="e.g. member123"
+            >
+          </div>
+          <div class="col-12 mt-2">
+            <button type="submit" class="btn btn-primary w-100">
+              Sign In
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="alert alert-info mb-4">
+      <strong>Demo reminder:</strong> Use the credentials below to explore each role.
+    </div>
+
+    <!-- Member credentials -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Member Credentials</div>
+      <div class="card-body">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Password</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for acc in member_accounts %}
+              <tr>
+                <td><code>{{ acc.username }}</code></td>
+                <td><code>{{ acc.password }}</code></td>
+              </tr>
+              <tr>
+                <td colspan="2" class="table-note">
+                  Member #{{ acc.member.member_id }} – {{ acc.member.first_name }} {{ acc.member.last_name }}
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2" class="text-muted text-center">No members found.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trainer credentials -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Trainer Credentials</div>
+      <div class="card-body">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Password</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for acc in trainer_accounts %}
+              <tr>
+                <td><code>{{ acc.username }}</code></td>
+                <td><code>{{ acc.password }}</code></td>
+              </tr>
+              <tr>
+                <td colspan="2" class="table-note">
+                  Trainer #{{ acc.trainer.trainer_id }} – {{ acc.trainer.first_name }} {{ acc.trainer.last_name }}
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2" class="text-muted text-center">No trainers found.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin credentials -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Admin Credentials</div>
+      <div class="card-body">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Password</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for acc in admin_accounts %}
+              <tr>
+                <td><code>{{ acc.username }}</code></td>
+                <td><code>{{ acc.password }}</code></td>
+              </tr>
+              <tr>
+                <td colspan="2" class="table-note">Full admin access</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2" class="text-muted text-center">No admins configured.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted mb-0">
+      Suggested flow: log in as <code>member1 / member123</code> first, then try
+      <code>trainer1 / trainer123</code>, and finally <code>admin1 / admin123</code>.
+    </p>
+  </div>
+</div>
+{% endblock %}

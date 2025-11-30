@@ -1,6 +1,145 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <style>
+    body {
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      font-size: 1rem;
+      background-color: #f0f2f5;
+      color: #1c1d1f;
+    }
+
+    .card {
+      border-radius: 0.85rem;
+      border: 1px solid #e0e4ea;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+    }
+
+    .card-header {
+      font-size: 1.1rem;
+      font-weight: 600;
+      background-color: #f8fafc;
+      text-align: center;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-subtitle {
+      color: #475569;
+      margin-bottom: 1.5rem;
+    }
+
+    .table-clean {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    .table-clean thead {
+      background-color: #eef2f7;
+    }
+
+    .table-clean th,
+    .table-clean td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 1.05rem;
+      text-align: center;
+      vertical-align: middle;
+      white-space: normal;
+      word-break: normal;
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+
+    .table-clean th {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .table-wrapper {
+      background-color: #fff;
+      border: 1px solid #e0e7f1;
+      border-radius: 0.85rem;
+      padding: 1rem;
+      margin-bottom: 1.75rem;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    .section-block {
+      margin-top: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .table-auto {
+      table-layout: auto;
+    }
+
+    .table-clean tbody tr:nth-child(even) {
+      background-color: #f9fbfc;
+    }
+
+    .table-divider {
+      border-top: 2px solid #cbd5f5;
+      margin: 2rem 0;
+    }
+
+    .form-label {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .form-control,
+    .form-select {
+      font-size: 1.05rem;
+      border-radius: 0.6rem;
+      border: 1px solid #cbd5f5;
+      padding: 0.8rem 1rem;
+      background-color: #fff;
+    }
+
+    .btn {
+      border-radius: 0.6rem;
+      font-weight: 600;
+      font-size: 1.05rem;
+      padding: 0.65rem 1.25rem;
+    }
+
+    .btn-compact {
+      font-size: 0.92rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 0.45rem;
+    }
+
+    .table-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .table-actions .btn {
+      flex: 1 0 45%;
+      min-width: 110px;
+      white-space: normal;
+    }
+
+    .table-note {
+      font-size: 0.9rem;
+      color: #475569;
+    }
+  </style>
+
   <meta charset="utf-8">
   <title>Fitness Club ORM Demo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,78 +151,158 @@
   >
 </head>
 <body class="bg-light">
-<nav class="navbar navbar-dark bg-dark navbar-expand-lg mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="{{ url_for('index') }}">Fitness ORM</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('index') }}">Fitness Club</a>
 
+    <!-- mobile toggler -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-            data-bs-target="#mainNav" aria-controls="mainNav"
+            data-bs-target="#mainNavbar" aria-controls="mainNavbar"
             aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse" id="mainNav">
-     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-    <li class="nav-item">
-      <a class="nav-link" href="{{ url_for('index') }}">Home</a>
-    </li>
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <!-- LEFT side: role-specific menus -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {# Member menu #}
+        {% if session.get('role') == 'member' %}
+          <li class="nav-item">
+            <a class="nav-link"
+               href="{{ url_for('member_dashboard',
+                                member_id=session.get('member_id', 1)) }}">
+              Member Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link"
+               href="{{ url_for('members_list') }}">
+              Members List
+            </a>
+          </li>
+        {% endif %}
 
-    <!-- Member dropdown -->
-    <li class="nav-item dropdown">
-      <a class="nav-link dropdown-toggle" href="#" id="memberDropdown" role="button"
-        data-bs-toggle="dropdown" aria-expanded="false">
-        Member
-      </a>
-      <ul class="dropdown-menu" aria-labelledby="memberDropdown">
-        <li><a class="dropdown-item" href="{{ url_for('members_list') }}">All Members</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('member_register') }}">New Member</a></li>
+        {# Trainer menu #}
+        {% if session.get('role') == 'trainer' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#"
+               id="trainerMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              Trainer
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="trainerMenu">
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('trainer_schedule',
+                                    trainer_id=session.get('trainer_id', 1)) }}">
+                  Schedule
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('trainer_member_lookup',
+                                    trainer_id=session.get('trainer_id', 1)) }}">
+                  Member Lookup
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('trainer_classes',
+                                    trainer_id=session.get('trainer_id', 1)) }}">
+                  Classes
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('trainer_availability',
+                                    trainer_id=session.get('trainer_id', 1)) }}">
+                  Set Availability
+                </a>
+              </li>
+            </ul>
+          </li>
+        {% endif %}
+
+        {# Admin menu #}
+        {% if session.get('role') == 'admin' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#"
+               id="adminMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              Admin
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="adminMenu">
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('admin_room_booking') }}">
+                  Room Booking & Scheduling
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('admin_class_management') }}">
+                  Class Management
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('admin_equipment') }}">
+                  Equipment Maintenance
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item"
+                   href="{{ url_for('admin_payments') }}">
+                  Payments / Billing
+                </a>
+              </li>
+            </ul>
+          </li>
+        {% endif %}
       </ul>
-    </li>
 
-    <!-- Trainer dropdown (default trainer_id=1 for demo) -->
-    <li class="nav-item dropdown">
-      <a class="nav-link dropdown-toggle" href="#" id="trainerDropdown" role="button"
-        data-bs-toggle="dropdown" aria-expanded="false">
-        Trainer
-      </a>
-      <ul class="dropdown-menu" aria-labelledby="trainerDropdown">
-        <li><a class="dropdown-item" href="{{ url_for('trainer_schedule', trainer_id=1) }}">Schedule</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('trainer_availability', trainer_id=1) }}">Availability</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('trainer_member_lookup', trainer_id=1) }}">Member Lookup</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('trainer_classes', trainer_id=1) }}">Manage Classes</a></li>
+      <!-- RIGHT side: login / logout -->
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        {% if session.get('username') %}
+          <li class="nav-item me-2">
+            <span class="navbar-text small text-light">
+              Logged in as
+              <strong>{{ session.get('username') }}</strong>
+              ({{ session.get('role')|capitalize }})
+            </span>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-outline-light btn-sm"
+               href="{{ url_for('logout') }}">
+              Logout
+            </a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="btn btn-outline-light btn-sm"
+               href="{{ url_for('login') }}">
+              Login
+            </a>
+          </li>
+        {% endif %}
       </ul>
-  </li>
-
-  <!-- Admin dropdown -->
-  <li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button"
-       data-bs-toggle="dropdown" aria-expanded="false">
-      Admin
-    </a>
-    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-      <li><a class="dropdown-item" href="{{ url_for('index') }}#admin">Dashboard</a></li>
-      <li><a class="dropdown-item" href="{{ url_for('admin_equipment') }}">Equipment</a></li>
-      <li><a class="dropdown-item" href="{{ url_for('admin_payments') }}">Payments</a></li>
-    </ul>
-  </li>
-</ul>
-
-      <span class="navbar-text text-light small">
-        Trainer/Member demo IDs are shown on the home page.
-      </span>
     </div>
   </div>
 </nav>
-
 
 <div class="container mb-4">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       <div class="mb-3">
         {% for category, msg in messages %}
-          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}
+                      alert-dismissible fade show"
+               role="alert">
             {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close"
+                    data-bs-dismiss="alert"></button>
           </div>
         {% endfor %}
       </div>
