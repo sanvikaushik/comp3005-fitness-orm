@@ -1,0 +1,188 @@
+@startuml
+
+' ==========
+'  ORIGINAL
+' ==========
+
+class Member{
+  +MemberID: INT
+  +FirstName: VARCHAR
+  +LastName: VARCHAR
+  +Email: VARCHAR
+  +PhoneNumber: VARCHAR
+  +DateOfBirth: DATE
+  +Gender: VARCHAR
+}
+
+class Trainer{
+  +TrainerID
+  +FirstName
+  +LastName
+  +Email
+  +PhoneNumber
+  +Specialization
+  +IsActive
+}
+
+class AdministrativeStaff {
+    +StaffID
+    +FirstName
+    +LastName
+    +Email
+    +Password
+}
+
+class Room {
+    +RoomID
+    +RoomName
+    +Capacity
+}
+
+class Equipment {
+    +EquipmentID
+    +RoomID
+    +Room(RoomID)
+    +Name
+    +Status
+    +LastServicedDate
+}
+
+class HealthMetric {
+    MetricID 
+    MemberID
+    Member(MemberID)
+    RecordedAt
+    Weight
+    Height
+    TargetWeight
+    HeartRate
+}
+
+class ClassSchedule {
+    ClassID
+    ClassName
+    TrainerID
+    Trainer(TrainerID)
+    RoomID
+    Room(RoomID)
+    DayOfWeek
+    StartTime
+    MaxCapacity
+}
+
+class ClassRegistration {
+    RegistrationID
+    MemberID
+    ClassID
+    DateRegistration
+}
+
+class PrivateSession {
+    SessionID
+    MemberID
+    TrainerID
+    RoomID
+    SessionDate
+    SessionTime
+    ActivityType
+    IsConflict
+}
+
+class Payment {
+    PaymentID
+    MemberID
+    StaffID
+    Amount
+    PaymentDate
+    PaymentType        
+    Notes
+}
+
+class TrainerAvailability {
+    AvailabilityID
+    TrainerID
+    DayOfWeek 
+    StartTime
+    EndTime
+    IsRecurring
+}
+
+class EquipmentMaintenance {
+    MaintenanceID
+    EquipmentID
+    StaffID
+    ReportedAt
+    Description
+    Status
+    ResolvedAt
+}
+
+' ==========================================
+'   UML ER DIAMOND RELATIONSHIP ENTITIES
+' ==========================================
+
+entity "records" as R1 <<relationship>> { }
+entity "registersFor" as R2 <<relationship>> { }
+entity "teaches" as R3 <<relationship>> { }
+entity "usesRoom" as R4 <<relationship>> { }
+entity "contains" as R5 <<relationship>> { }
+entity "books" as R6 <<relationship>> { }
+entity "processes" as R7 <<relationship>> { }
+entity "availability" as R8 <<relationship>> { }
+entity "maintenanceReport" as R9 <<relationship>> { }
+
+' Make diamonds
+skinparam entity {
+    BackgroundColor White
+    BorderColor Black
+}
+skinparam stereotypeC {
+    BackgroundColor Black
+    BorderColor Black
+}
+ 
+' ==========================================
+'    RELATIONSHIPS WITH CARDINALITIES
+' ==========================================
+
+' MEMBER – HEALTH METRIC
+Member "1" -- "N" R1
+R1 -- "N" HealthMetric
+
+' MEMBER – CLASS – REGISTRATION
+Member "1" -- "N" R2
+R2 -- "N" ClassSchedule
+
+' TRAINER – CLASS
+Trainer "1" -- "N" R3
+R3 -- "N" ClassSchedule
+
+' ROOM – CLASS
+Room "1" -- "N" R4
+R4 -- "N" ClassSchedule
+
+' ROOM – EQUIPMENT
+Room "1" -- "N" R5
+R5 -- "N" Equipment
+
+' MEMBER – TRAINER – PRIVATE SESSION
+Member "1" -- "N" R6
+Trainer "1" -- "N" R6
+Room "1" -- "N" R6
+R6 -- "1" PrivateSession
+
+' PAYMENT — STAFF — MEMBER
+Member "1" -- "N" R7
+AdministrativeStaff "1" -- "N" R7
+R7 -- "N" Payment
+
+' TRAINER – TRAINER AVAILABILITY
+Trainer "1" -- "N" R8
+R8 -- "N" TrainerAvailability
+
+' EQUIPMENT MAINTENANCE — STAFF — EQUIPMENT
+Equipment "1" -- "N" R9
+AdministrativeStaff "1" -- "N" R9
+R9 -- "N" EquipmentMaintenance
+
+@enduml
