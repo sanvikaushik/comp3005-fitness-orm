@@ -1,14 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="h4 mb-3">Members for Trainer {{ trainer_id }}</h1>
+<h1 class="h4 mb-3">
+  Members for {{ trainer.first_name }} {{ trainer.last_name }} (ID {{ trainer_id }})
+</h1>
 
 <form method="get" class="row g-2 mb-3">
   <div class="col-md-6">
     <label class="form-label">Search by Name</label>
-    <input name="q" value="{{ query }}" class="form-control" placeholder="e.g. Bob">
+    <input id="memberSearchInput"
+           name="q"
+           value="{{ query }}"
+           class="form-control"
+           autocomplete="off"
+           placeholder="Start typing e.g. Bob"
+           data-search-url="{{ url_for('trainer_member_lookup_api', trainer_id=trainer_id) }}">
   </div>
   <div class="col-md-2 d-flex align-items-end">
-    <button class="btn btn-primary w-100" type="submit">Search</button>
+    <button class="btn btn-outline-secondary w-100" type="submit">Server Search</button>
   </div>
 </form>
 
@@ -31,7 +39,11 @@
           <td>{{ info.notes or "—" }}</td>
           <td>
             {% if info.latest_metric %}
-              {{ info.latest_metric.weight }} kg @ {{ info.latest_metric.timestamp }}
+              <div>{{ info.latest_metric.weight }} kg</div>
+              <div class="text-muted small">
+                HR {{ info.latest_metric.heart_rate if info.latest_metric.heart_rate is not none else '—' }} bpm
+                @ {{ info.latest_metric.timestamp.strftime("%b %d %I:%M %p") }}
+              </div>
             {% else %}
               <span class="text-muted">No metrics</span>
             {% endif %}
@@ -48,4 +60,80 @@
     </table>
   </div>
 </div>
+
+<div id="lookupStatus" class="text-muted small mt-2">
+  {% if results %}
+    Showing {{ results|length }} record(s).
+  {% elif query %}
+    No matching members.
+  {% else %}
+    Start typing to search by first or last name.
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const input = document.getElementById('memberSearchInput');
+  const tbody = document.querySelector('.table tbody');
+  const statusEl = document.getElementById('lookupStatus');
+  if (!input || !tbody) return;
+
+  const searchUrl = input.dataset.searchUrl;
+  let debounceId;
+
+  function renderRows(rows) {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No matching members.</td></tr>';
+      return;
+    }
+    const html = rows.map((row) => {
+      const metric = row.latest_metric;
+      const hrValue = metric && metric.heart_rate !== null && metric.heart_rate !== undefined
+        ? metric.heart_rate
+        : '—';
+      const metricHtml = metric && metric.weight !== null
+        ? `${metric.weight} kg <div class="text-muted small">HR ${hrValue} bpm @ ${metric.timestamp ?? ''}</div>`
+        : '<span class="text-muted">No metrics</span>';
+      return `
+        <tr>
+          <td>${row.name}</td>
+          <td>${row.target_weight ?? '—'}</td>
+          <td>${row.notes ?? '—'}</td>
+          <td>${metricHtml}</td>
+        </tr>`;
+    }).join('');
+    tbody.innerHTML = html;
+  }
+
+  function setStatus(message) {
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  }
+
+  function fetchResults(query) {
+    fetch(`${searchUrl}?q=${encodeURIComponent(query)}`, {
+      headers: { 'Accept': 'application/json' },
+    })
+      .then((resp) => resp.json())
+      .then((data) => {
+        const rows = data.results || [];
+        renderRows(rows);
+        setStatus(rows.length ? `Found ${rows.length} member(s)` : 'No matching members.');
+      })
+      .catch(() => setStatus('Unable to load members right now.'));
+  }
+
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
+    clearTimeout(debounceId);
+    if (!value) {
+      setStatus('Start typing to search by first or last name.');
+      return;
+    }
+    setStatus('Searching…');
+    debounceId = setTimeout(() => fetchResults(value), 250);
+  });
+})();
+</script>
 {% endblock %}

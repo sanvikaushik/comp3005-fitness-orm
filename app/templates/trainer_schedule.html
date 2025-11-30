@@ -4,15 +4,41 @@
   Trainer Schedule – {{ schedule.trainer.first_name }} {{ schedule.trainer.last_name }}
 </h1>
 
+{% if trainer_notifications %}
+  <div class="alert alert-info">
+    <strong>Recent Admin Updates</strong>
+    <ul class="mb-0">
+      {% for note in trainer_notifications %}
+        <li>
+          {{ note.message }}
+          <span class="text-muted small">
+            ({{ note.created_at.strftime("%b %d %I:%M %p") }})
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
 <div class="row">
   <div class="col-md-6 mb-3">
     <div class="card shadow-sm">
-      <div class="card-header">Upcoming Private Sessions</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-primary-subtle text-primary rounded-pill">1-on-1 PT</span>
+          <span>Upcoming Private Sessions</span>
+        </div>
+        <small class="text-muted">Members + rooms</small>
+      </div>
       <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
             <tr>
-              <th>Start</th><th>End</th><th>Member</th><th>Room</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Member</th>
+              <th>Room</th>
             </tr>
           </thead>
           <tbody>
@@ -21,37 +47,269 @@
               <td>{{ ps.start_time }}</td>
               <td>{{ ps.end_time }}</td>
               <td>{{ ps.member.first_name }} {{ ps.member.last_name }}</td>
-              <td>{{ ps.room_id }}</td>
+              <td>{{ ps.room.name if ps.room else ("Room " ~ ps.room_id) }}</td>
             </tr>
           {% else %}
             <tr><td colspan="4" class="text-muted text-center">No upcoming sessions.</td></tr>
           {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="col-md-6 mb-3">
     <div class="card shadow-sm">
-      <div class="card-header">Upcoming Classes</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-warning-subtle text-warning rounded-pill">Group</span>
+          <span>Upcoming Classes</span>
+        </div>
+        <small class="text-muted">Capacity awareness</small>
+      </div>
       <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-            <tr><th>Start</th><th>Name</th><th>Room</th></tr>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Start</th>
+              <th>Name</th>
+              <th>Room</th>
+              <th>Seats</th>
+            </tr>
           </thead>
           <tbody>
           {% for cls in schedule.upcoming_classes %}
+            {% set booked = cls.registrations|length %}
             <tr>
               <td>{{ cls.start_time }}</td>
               <td>{{ cls.name }}</td>
               <td>{{ cls.room.name if cls.room else cls.room_id }}</td>
+              <td>{{ booked }}/{{ cls.capacity }}</td>
             </tr>
           {% else %}
-            <tr><td colspan="3" class="text-muted text-center">No upcoming classes.</td></tr>
+            <tr><td colspan="4" class="text-muted text-center">No upcoming classes.</td></tr>
           {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill me-2">Availability</span>
+        PT Windows
+      </div>
+      <div class="card-body p-0">
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Start</th>
+                <th>End</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% set labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+            {% for av in schedule.trainer.availabilities|sort(attribute='day_of_week') %}
+              <tr>
+                <td>{{ labels[av.day_of_week] }}</td>
+                <td>{{ av.start_time.strftime("%I:%M %p") }}</td>
+                <td>{{ av.end_time.strftime("%I:%M %p") }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted small py-3">
+                  No availability defined yet.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <span class="badge bg-success-subtle text-success rounded-pill me-2">Payments</span>
+          <strong>Class Payments &amp; Receipts</strong>
+        </div>
+        <small class="text-muted">Synced with admin/member billing</small>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Payments listed below reflect class registrations processed via member or admin portals.
+        </p>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Class</th>
+                <th>Start</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for bill in schedule.billing_items %}
+              <tr>
+                <td>{{ bill.member.first_name }} {{ bill.member.last_name }}</td>
+                <td>{{ bill.class_schedule.name if bill.class_schedule else bill.description }}</td>
+                <td>
+                  {% if bill.class_schedule %}
+                    {{ bill.class_schedule.start_time.strftime("%b %d %I:%M %p") }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>${{ "%.2f"|format(bill.amount) }}</td>
+                <td>
+                  <span class="badge {% if bill.status == 'paid' %}bg-success-subtle text-success{% elif bill.status == 'cancelled' %}bg-secondary-subtle text-secondary{% else %}bg-warning-subtle text-warning{% endif %}">
+                    {{ bill.status|capitalize }}
+                  </span>
+                </td>
+                <td>
+                  {% if bill.paid_at %}
+                    Paid {{ bill.paid_at.strftime("%b %d %I:%M %p") }}
+                  {% else %}
+                    {{ bill.updated_at.strftime("%b %d %I:%M %p") }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-3">
+                  No billing items yet for your classes.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <span class="badge bg-info-subtle text-info rounded-pill me-2">Equipment</span>
+          <strong>Room Equipment &amp; Issues</strong>
+        </div>
+        <small class="text-muted">Mapped to your assigned rooms</small>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <span class="section-title fs-6">Open / Historical Issues</span>
+          <p class="text-muted small mb-2">
+            View-only log mirroring admin equipment maintenance. Rooms listed are those assigned to you.
+          </p>
+        </div>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Issue ID</th>
+                <th>Room</th>
+                <th>Equipment</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Reported</th>
+                <th>Resolved</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for issue in schedule.equipment_issues %}
+              <tr>
+                <td>#{{ issue.issue_id }}</td>
+                <td>{{ issue.room.name if issue.room else "—" }}</td>
+                <td>{{ issue.equipment.name if issue.equipment else "General" }}</td>
+                <td class="text-start">{{ issue.description }}</td>
+                <td>
+                  <span class="badge {% if issue.status == 'resolved' %}bg-success-subtle text-success{% elif issue.status == 'in_progress' %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                    {{ issue.status|replace('_',' ')|title }}
+                  </span>
+                </td>
+                <td>{{ issue.reported_at.strftime("%b %d %I:%M %p") }}</td>
+                <td>
+                  {% if issue.resolved_at %}
+                    {{ issue.resolved_at.strftime("%b %d %I:%M %p") }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-3">
+                  No equipment issues logged for your rooms yet.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4">
+          <span class="section-title fs-6">Equipment Inventory Snapshot</span>
+          <p class="text-muted small mb-2">
+            Status of equipment tied to your rooms (based on latest logged issue).
+          </p>
+        </div>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Equipment</th>
+                <th>Room</th>
+                <th>Status</th>
+                <th>Trainer</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for eq in schedule.equipment_inventory %}
+              <tr>
+                <td>{{ eq.name }}</td>
+                <td>{{ eq.room.name if eq.room else "General" }}</td>
+                <td>{{ eq.status|title }}</td>
+                <td>
+                  {% if eq.trainer %}
+                    {{ eq.trainer.first_name }} {{ eq.trainer.last_name }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="text-start">{{ eq.notes or "—" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">
+                  No equipment items associated with your rooms yet.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

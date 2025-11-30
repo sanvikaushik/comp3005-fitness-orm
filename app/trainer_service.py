@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Optional
 
 from sqlalchemy import select, and_, or_, func
@@ -15,6 +15,8 @@ from models.scheduling import (
     Room,
 )
 from models.member import Member, HealthMetric
+from models.payment import BillingItem
+from models.equipment import EquipmentIssue, Equipment
 from models.base import get_session
 
 
@@ -36,6 +38,8 @@ def set_trainer_availability(
     """
     if start >= end:
         raise ValueError("Availability start time must be before end time")
+    if start.minute != 0 or start.second != 0 or end.minute != 0 or end.second != 0:
+        raise ValueError("Availability times must start/end on the hour (e.g., 09:00)")
 
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -75,6 +79,74 @@ def set_trainer_availability(
     return avail
 
 
+def update_trainer_availability(
+    session: Session,
+    *,
+    availability_id: int,
+    start: time,
+    end: time,
+) -> TrainerAvailability:
+    """
+    Update start/end of an existing availability window while keeping trainer/day fixed.
+    Prevents overlaps with other windows on the same day.
+    """
+    if start >= end:
+        raise ValueError("Availability start time must be before end time")
+    if start.minute != 0 or start.second != 0 or end.minute != 0 or end.second != 0:
+        raise ValueError("Availability times must start/end on the hour (e.g., 09:00)")
+
+    availability = session.get(TrainerAvailability, availability_id)
+    if not availability:
+        raise ValueError("Availability window not found")
+
+    overlap_stmt = select(TrainerAvailability).where(
+        TrainerAvailability.trainer_id == availability.trainer_id,
+        TrainerAvailability.day_of_week == availability.day_of_week,
+        TrainerAvailability.availability_id != availability.availability_id,
+        or_(
+            and_(
+                TrainerAvailability.start_time <= start,
+                TrainerAvailability.end_time > start,
+            ),
+            and_(
+                TrainerAvailability.start_time < end,
+                TrainerAvailability.end_time >= end,
+            ),
+            and_(
+                TrainerAvailability.start_time >= start,
+                TrainerAvailability.end_time <= end,
+            ),
+        ),
+    )
+    if session.scalars(overlap_stmt).first():
+        raise ValueError("Updated window overlaps with an existing one")
+
+    availability.start_time = start
+    availability.end_time = end
+    session.commit()
+    session.refresh(availability)
+    return availability
+
+
+def _trainer_supports_window(
+    session: Session,
+    trainer_id: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> bool:
+    day = start_time.weekday()
+    start_t = start_time.time()
+    end_t = end_time.time()
+    avail_stmt = select(TrainerAvailability).where(
+        TrainerAvailability.trainer_id == trainer_id,
+        TrainerAvailability.day_of_week == day,
+    )
+    return any(
+        av.start_time <= start_t and av.end_time >= end_t
+        for av in session.scalars(avail_stmt)
+    )
+
+
 # ---------------------------
 # 2. Schedule View
 # ---------------------------
@@ -98,8 +170,16 @@ def get_trainer_schedule(
     trainer_stmt = (
         select(Trainer)
         .options(
-            joinedload(Trainer.private_sessions).joinedload(PrivateSession.member),
-            joinedload(Trainer.classes).joinedload(ClassSchedule.room),
+            joinedload(Trainer.private_sessions)
+            .joinedload(PrivateSession.member),
+            joinedload(Trainer.private_sessions)
+            .joinedload(PrivateSession.room),
+            joinedload(Trainer.classes)
+            .joinedload(ClassSchedule.room),
+            joinedload(Trainer.classes)
+            .selectinload(ClassSchedule.registrations),
+            joinedload(Trainer.availabilities),
+            joinedload(Trainer.primary_rooms),
         )
         .where(Trainer.trainer_id == trainer_id)
     )
@@ -119,6 +199,53 @@ def get_trainer_schedule(
         if cls.start_time >= now
     ]
 
+    billing_stmt = (
+        select(BillingItem)
+        .options(
+            joinedload(BillingItem.member),
+            joinedload(BillingItem.class_schedule).joinedload(ClassSchedule.room),
+        )
+        .join(ClassSchedule, BillingItem.class_id == ClassSchedule.class_id)
+        .where(ClassSchedule.trainer_id == trainer_id)
+        .order_by(BillingItem.created_at.desc())
+    )
+    billing_items = list(session.scalars(billing_stmt))
+
+    trainer_room_ids = {room.room_id for room in trainer.primary_rooms}
+
+    equipment_issues_stmt = (
+        select(EquipmentIssue)
+        .options(
+            joinedload(EquipmentIssue.equipment),
+            joinedload(EquipmentIssue.room),
+        )
+        .join(Equipment, Equipment.equipment_id == EquipmentIssue.equipment_id, isouter=True)
+        .where(
+            or_(
+                EquipmentIssue.room_id.in_(trainer_room_ids) if trainer_room_ids else False,
+                Equipment.trainer_id == trainer_id,
+            )
+        )
+        .order_by(EquipmentIssue.reported_at.desc())
+    )
+    equipment_issues = list(session.execute(equipment_issues_stmt).unique().scalars())
+
+    equipment_inventory_stmt = (
+        select(Equipment)
+        .options(
+            joinedload(Equipment.room),
+            joinedload(Equipment.trainer),
+        )
+        .where(
+            or_(
+                Equipment.room_id.in_(trainer_room_ids) if trainer_room_ids else False,
+                Equipment.trainer_id == trainer_id,
+            )
+        )
+        .order_by(Equipment.name)
+    )
+    equipment_inventory = list(session.scalars(equipment_inventory_stmt))
+
     return {
         "trainer": trainer,
         "upcoming_private_sessions": sorted(
@@ -127,6 +254,9 @@ def get_trainer_schedule(
         "upcoming_classes": sorted(
             upcoming_classes, key=lambda c: c.start_time
         ),
+        "billing_items": billing_items,
+        "equipment_issues": equipment_issues,
+        "equipment_inventory": equipment_inventory,
     }
 
 
@@ -210,6 +340,7 @@ def create_or_update_class(
     capacity: int,
     start_time: datetime,
     end_time: datetime,
+    price: float,
     class_id: Optional[int] = None,
 ) -> ClassSchedule:
     """
@@ -222,8 +353,10 @@ def create_or_update_class(
       - no overlapping classes or private sessions for the same room
       - no overlapping classes or private sessions for the same trainer
     """
-    if start_time >= end_time:
-        raise ValueError("Class start time must be before end time")
+    start_time = start_time.replace(minute=0, second=0, microsecond=0)
+    end_time = start_time + timedelta(hours=1)
+    if price <= 0:
+        raise ValueError("Class price must be positive")
 
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -232,6 +365,8 @@ def create_or_update_class(
     room = session.get(Room, room_id)
     if not room:
         raise ValueError("Room not found")
+    if room.primary_trainer_id and room.primary_trainer_id != trainer_id:
+        raise ValueError("Room is not assigned to this trainer")
 
     # If updating, fetch existing class and make sure trainer matches
     existing_class: Optional[ClassSchedule] = None
@@ -241,6 +376,9 @@ def create_or_update_class(
             raise ValueError("Class not found")
         if existing_class.trainer_id != trainer_id:
             raise ValueError("Trainer is not allowed to modify this class")
+
+    if not _trainer_supports_window(session, trainer_id, start_time, end_time):
+        raise ValueError("Trainer does not have availability for this time window")
 
     # helper for time overlap: [start_time, end_time) intersects with [col_start, col_end)
     def _overlap_filter(col_start, col_end):
@@ -297,6 +435,7 @@ def create_or_update_class(
             start_time=start_time,
             end_time=end_time,
             capacity=capacity,
+            price=price,
         )
         session.add(cls)
     else:
@@ -306,6 +445,7 @@ def create_or_update_class(
         cls.start_time = start_time
         cls.end_time = end_time
         cls.capacity = capacity
+        cls.price = price
 
     session.commit()
     session.refresh(cls)
