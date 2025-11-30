@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from models.member import Member
+from models.scheduling import PrivateSession, ClassSchedule, Room
+from models.equipment import Equipment
+from models.payment import Payment
 
 from models.scheduling import (
     Room,
@@ -81,3 +87,46 @@ def admin_reschedule_class(
         class_id=cls.class_id,
     )
     return updated
+
+def update_equipment_status(session, equipment_id: int, new_status: str) -> Equipment:
+    """
+    Update the status of an equipment item.
+
+    Used by the Admin Equipment UI.
+    """
+    eq = session.get(Equipment, equipment_id)
+    if not eq:
+        raise ValueError(f"Equipment {equipment_id} not found.")
+
+    eq.status = new_status
+    session.commit()
+    session.refresh(eq)
+    return eq
+
+def record_payment(
+    session,
+    member_id: int,
+    amount: float,
+    description: str | None = None,
+) -> Payment:
+    """
+    Create a payment row for a member.
+
+    This is used by the Admin Payments UI, and will also trigger any
+    DB trigger you've defined on the payment table.
+    """
+    member = session.get(Member, member_id)
+    if not member:
+        raise ValueError(f"Member {member_id} not found.")
+
+    payment = Payment(
+        member_id=member_id,
+        amount=amount,
+        description=description,
+        paid_at=datetime.utcnow(),
+    )
+    session.add(payment)
+    session.commit()
+    session.refresh(payment)
+    return payment
+

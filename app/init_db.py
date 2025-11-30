@@ -1,7 +1,7 @@
 from sqlalchemy import text
 
+from models import member, scheduling, equipment, payment  # noqa: F401
 from models.base import Base, engine
-from models import member, scheduling  # noqa: F401 (import to register models)
 
 
 def init_db() -> None:

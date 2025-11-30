@@ -23,60 +23,50 @@
     </button>
 
     <div class="collapse navbar-collapse" id="mainNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item">
-          <a class="nav-link{% if request.endpoint == 'index' %} active{% endif %}"
-             href="{{ url_for('index') }}">Home</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('member_register') }}">New Member</a>
-        </li>
+     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+    <li class="nav-item">
+      <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+    </li>
 
-        <!-- Demo shortcuts so you never need to paste URLs -->
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="demoMenu"
-             role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Demo Links
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="demoMenu">
-            <li class="dropdown-header">Member</li>
-            <li>
-              <!-- You can change 1 to any member_id you want to demo -->
-              <a class="dropdown-item"
-                 href="{{ url_for('member_dashboard', member_id=1) }}">
-                Member Dashboard (ID 1)
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-
-            <li class="dropdown-header">Trainer (ID 1)</li>
-            <li>
-              <a class="dropdown-item"
-                 href="{{ url_for('trainer_schedule', trainer_id=1) }}">
-                Schedule
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item"
-                 href="{{ url_for('trainer_availability', trainer_id=1) }}">
-                Availability
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item"
-                 href="{{ url_for('trainer_manage_classes', trainer_id=1) }}">
-                Manage Classes
-              </a>
-            </li>
-            <li>
-              <a class="nav-link" href="{{ url_for('trainer_member_lookup', trainer_id=1) }}">
-                Trainer Members
-              </a>
-
-            </li>
-          </ul>
-        </li>
+    <!-- Member dropdown -->
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" href="#" id="memberDropdown" role="button"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        Member
+      </a>
+      <ul class="dropdown-menu" aria-labelledby="memberDropdown">
+        <li><a class="dropdown-item" href="{{ url_for('members_list') }}">All Members</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('member_register') }}">New Member</a></li>
       </ul>
+    </li>
+
+    <!-- Trainer dropdown (default trainer_id=1 for demo) -->
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" href="#" id="trainerDropdown" role="button"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        Trainer
+      </a>
+      <ul class="dropdown-menu" aria-labelledby="trainerDropdown">
+        <li><a class="dropdown-item" href="{{ url_for('trainer_schedule', trainer_id=1) }}">Schedule</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('trainer_availability', trainer_id=1) }}">Availability</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('trainer_member_lookup', trainer_id=1) }}">Member Lookup</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('trainer_classes', trainer_id=1) }}">Manage Classes</a></li>
+      </ul>
+  </li>
+
+  <!-- Admin dropdown -->
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button"
+       data-bs-toggle="dropdown" aria-expanded="false">
+      Admin
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+      <li><a class="dropdown-item" href="{{ url_for('index') }}#admin">Dashboard</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('admin_equipment') }}">Equipment</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('admin_payments') }}">Payments</a></li>
+    </ul>
+  </li>
+</ul>
 
       <span class="navbar-text text-light small">
         Trainer/Member demo IDs are shown on the home page.

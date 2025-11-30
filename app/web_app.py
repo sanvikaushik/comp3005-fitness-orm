@@ -4,9 +4,13 @@ from datetime import datetime
 from sqlalchemy import select
 
 from flask import Flask, render_template, request, redirect, url_for, flash
-from models.scheduling import Trainer, ClassSchedule, Room
 
 from models.base import get_session
+from models.member import Member
+from models.scheduling import Trainer, ClassSchedule, Room
+from models.equipment import Equipment
+from models.payment import Payment
+
 from app.member_service import (
     create_member,
     log_health_metric,
@@ -25,12 +29,12 @@ from app.trainer_service import (
 from app.admin_service import (
     admin_reassign_session_room,
     admin_reschedule_class,
+    update_equipment_status,
+    record_payment,
 )
-from models.scheduling import Trainer, Room, ClassSchedule
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-secret"  # fine for local/demo use only
-
 
 # -------------------------------------------------
 # Home
@@ -85,16 +89,32 @@ def member_dashboard(member_id: int):
 
 @app.route("/members/<int:member_id>/metrics/new", methods=["POST"])
 def member_add_metric(member_id: int):
-    weight = request.form.get("weight")
-    heart_rate = request.form.get("heart_rate")
+    weight_raw = request.form.get("weight", "").strip()
+    heart_rate_raw = request.form.get("heart_rate", "").strip()
+
+    # Parse safely
+    weight = None
+    heart_rate = None
+
+    try:
+        if weight_raw:
+            weight = float(weight_raw)
+
+        if heart_rate_raw:
+            # Allow "69.0", "69", even with extra spaces/tabs
+            heart_rate = int(float(heart_rate_raw))
+    except ValueError:
+        flash("Please enter valid numeric values for weight and heart rate.", "error")
+        return redirect(url_for("member_dashboard", member_id=member_id))
 
     with get_session() as session:
         log_health_metric(
             session,
             member_id=member_id,
-            weight=float(weight) if weight else None,
-            heart_rate=int(heart_rate) if heart_rate else None,
+            weight=weight,
+            heart_rate=heart_rate,
         )
+
     flash("Health metric logged.", "success")
     return redirect(url_for("member_dashboard", member_id=member_id))
 
@@ -103,11 +123,8 @@ def member_add_metric(member_id: int):
 def member_book_session(member_id: int):
     trainer_id = int(request.form["trainer_id"])
     room_id = int(request.form["room_id"])
-    # start = datetime.fromisoformat(request.form["start_time"])
-    # end = datetime.fromisoformat(request.form["end_time"])
-
-    start_time = time.fromisoformat(start_str)  # "09:00"
-    end_time = time.fromisoformat(end_str)
+    start = datetime.fromisoformat(request.form["start_time"])
+    end = datetime.fromisoformat(request.form["end_time"])
 
     with get_session() as session:
         try:
@@ -162,6 +179,13 @@ def member_update_profile(member_id: int):
 
     return redirect(url_for("member_dashboard", member_id=member_id))
 
+@app.route("/members")
+def members_list():
+    """List all members in a simple Bootstrap table."""
+    with get_session() as session:
+        members = list(session.scalars(select(Member).order_by(Member.member_id)))
+    return render_template("members_list.html", members=members)
+
 # -------------------------------------------------
 # Trainer UI
 # -------------------------------------------------
@@ -213,71 +237,52 @@ def trainer_member_lookup(trainer_id: int):
     )
 
 @app.route("/trainers/<int:trainer_id>/classes", methods=["GET", "POST"])
-def trainer_manage_classes(trainer_id: int):
-    if request.method == "POST":
-        class_id_raw = request.form.get("class_id")  # optional for update
-        name = request.form.get("name")
-        room_id_raw = request.form.get("room_id")
-        start_raw = request.form.get("start_time")
-        end_raw = request.form.get("end_time")
-        capacity_raw = request.form.get("capacity")
+def trainer_classes(trainer_id: int):
+    """Trainer view to create new group classes and see existing ones."""
+    with get_session() as session:
+        trainer = session.get(Trainer, trainer_id)
+        if not trainer:
+            flash(f"Trainer {trainer_id} not found.", "error")
+            return redirect(url_for("index"))
 
-        try:
-            room_id = int(room_id_raw) if room_id_raw else None
-            capacity = int(capacity_raw) if capacity_raw else None
+        rooms = list(session.scalars(select(Room).order_by(Room.room_id)))
 
-            start_time = datetime.fromisoformat(start_raw) if start_raw else None
-            end_time = datetime.fromisoformat(end_raw) if end_raw else None
+        if request.method == "POST":
+            name = request.form.get("name")
+            room_id = int(request.form["room_id"])
+            capacity = int(request.form["capacity"])
+            start_time = datetime.fromisoformat(request.form["start_time"])
+            end_time = datetime.fromisoformat(request.form["end_time"])
 
-
-            class_id = int(class_id_raw) if class_id_raw else None
-
-            with get_session() as session:
-                cls = create_or_update_class(
-                    session=session,
+            try:
+                create_or_update_class(
+                    session,
                     trainer_id=trainer_id,
                     name=name,
                     room_id=room_id,
                     start_time=start_time,
                     end_time=end_time,
                     capacity=capacity,
-                    class_id=class_id,  # None = create, not None = update
                 )
+                flash("Class created successfully.", "success")
+                return redirect(url_for("trainer_classes", trainer_id=trainer_id))
+            except Exception as e:
+                flash(f"Error creating class: {e}", "error")
 
-            if class_id:
-                flash(f"Class {cls.class_id} updated.", "success")
-            else:
-                flash(f"Class {cls.class_id} created.", "success")
-
-        except Exception as e:
-            flash(f"Error saving class: {e}", "error")
-
-        return redirect(url_for("trainer_manage_classes", trainer_id=trainer_id))
-
-    # GET: show trainer's classes
-    with get_session() as session:
-        trainer = session.get(Trainer, trainer_id)
-        if not trainer:
-            flash("Trainer not found.", "error")
-            return redirect(url_for("index"))
-
-        stmt = (
-            select(ClassSchedule)
-            .where(ClassSchedule.trainer_id == trainer_id)
-            .order_by(ClassSchedule.start_time)
+        classes = list(
+            session.scalars(
+                select(ClassSchedule)
+                .where(ClassSchedule.trainer_id == trainer_id)
+                .order_by(ClassSchedule.start_time)
+            )
         )
-        classes = list(session.scalars(stmt))
-
-        # optional: all rooms for a dropdown
-        rooms = list(session.scalars(select(Room).order_by(Room.room_id)))
 
     return render_template(
         "trainer_classes.html",
         trainer=trainer,
-        classes=classes,
         rooms=rooms,
+        classes=classes,
     )
-
 
 # -------------------------------------------------
 # Admin UI
@@ -320,6 +325,56 @@ def admin_reschedule_class_view():
             flash(f"Error: {e}", "error")
     return redirect(url_for("index"))
 
+@app.route("/admin/equipment", methods=["GET", "POST"])
+def admin_equipment():
+    """Admin page to view and update equipment status."""
+    with get_session() as session:
+        if request.method == "POST":
+            equipment_id = int(request.form["equipment_id"])
+            new_status = request.form["status"]
+
+            try:
+                update_equipment_status(session, equipment_id, new_status)
+                flash("Equipment status updated.", "success")
+                return redirect(url_for("admin_equipment"))
+            except Exception as e:
+                flash(f"Error updating equipment: {e}", "error")
+
+        equipment = list(
+            session.scalars(select(Equipment).order_by(Equipment.equipment_id))
+        )
+
+    return render_template("admin_equipment.html", equipment=equipment)
+
+@app.route("/admin/payments", methods=["GET", "POST"])
+def admin_payments():
+    """Admin page to record payments and view recent history."""
+    with get_session() as session:
+        if request.method == "POST":
+            member_id = int(request.form["member_id"])
+            amount = float(request.form["amount"])
+            description = request.form.get("description") or None
+
+            try:
+                record_payment(session, member_id, amount, description)
+                flash("Payment recorded.", "success")
+                return redirect(url_for("admin_payments"))
+            except Exception as e:
+                # Reset the session transaction so we can keep using it
+                session.rollback()
+                flash(f"Error recording payment: {e}", "error")
+                # optional: redirect to clear the form
+                return redirect(url_for("admin_payments"))
+
+        payments = list(
+            session.scalars(
+                select(Payment)
+                .order_by(Payment.paid_at.desc())
+                .limit(20)
+            )
+        )
+
+    return render_template("admin_payments.html", payments=payments)
 
 # Simple helper to show lists of trainers/rooms/classes on the home page
 @app.context_processor

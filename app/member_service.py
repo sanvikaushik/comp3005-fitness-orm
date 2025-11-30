@@ -5,6 +5,8 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
+from models.member import HealthMetric
+
 from models.base import get_session
 from models.member import Member, HealthMetric
 from models.scheduling import (
@@ -83,23 +85,21 @@ def update_member(
 
 # 2. Log and View Health Metrics
 def log_health_metric(
-    session: Session,
+    session,
     member_id: int,
-    *,
-    weight: Optional[float] = None,
-    height: Optional[float] = None,
-    heart_rate: Optional[float] = None,
-    body_fat_pct: Optional[float] = None,
+    weight: float | None = None,
+    heart_rate: int | None = None,
 ) -> HealthMetric:
-    if not session.get(Member, member_id):
-        raise ValueError("Member not found")
+    """
+    Append a new health metric entry for the member.
 
+    Does NOT overwrite previous rows; each call inserts a new record with its own timestamp.
+    """
     metric = HealthMetric(
         member_id=member_id,
         weight=weight,
-        height=height,
         heart_rate=heart_rate,
-        body_fat_pct=body_fat_pct,
+        # timestamp will be filled by server_default=now()
     )
     session.add(metric)
     session.commit()

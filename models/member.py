@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Text,
 )
+from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -30,7 +31,7 @@ class Member(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     health_metrics: Mapped[list["HealthMetric"]] = relationship(
-        back_populates="member", cascade="all, delete-orphan"
+        back_populates="member", cascade="all, delete-orphan",  order_by="HealthMetric.timestamp.desc()",
     )
 
     class_registrations: Mapped[list["ClassRegistration"]] = relationship(
@@ -48,14 +49,20 @@ class HealthMetric(Base):
     __tablename__ = "health_metric"
 
     metric_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    member_id: Mapped[int] = mapped_column(ForeignKey("member.member_id"), nullable=False)
+
+    member_id: Mapped[int] = mapped_column(
+        ForeignKey("member.member_id"),
+        nullable=False,
+        # ❗ IMPORTANT: do NOT set unique=True here
+    )
+
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     weight: Mapped[float | None] = mapped_column(Float, nullable=True)
-    height: Mapped[float | None] = mapped_column(Float, nullable=True)
-    heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
-    body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    member: Mapped["Member"] = relationship(back_populates="health_metrics")
+    member = relationship("Member", back_populates="health_metrics")
