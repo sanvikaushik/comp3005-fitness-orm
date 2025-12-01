@@ -6,9 +6,11 @@ Member:
 	PhoneNumber
 	DateOfBirth
 	Gender
+	TargetWeight
+	Notes
 
 Trainer:
-	TrainerID
+	TrainerID PK
 	FirstName
 	LastName
 	Email
@@ -27,17 +29,20 @@ Room:
 	RoomID PK
 	RoomName
 	Capacity
+	PrimaryTrainerID
 
 Equipment:
 	EquipmentID PK
-	RoomID FK
+	RoomID
 	Name
 	Status
+	notes
+	room_id
 	LastServicedDate
 
 HealthMetric:
 	MetricID PK
-	MemberID FK
+	MemberID
 	RecordedAt
 	Weight
 	Height
@@ -47,23 +52,23 @@ HealthMetric:
 ClassSchedule:
 	ClassID PK
 	ClassName
-	TrainerID FK
-	RoomID FK
+	TrainerID
+	RoomID
 	DayOfWeek
 	StartTime
 	MaxCapacity
 
 ClassRegistration:
 	RegistrationID PK
-	MemberID FK
-	ClassID FK
+	MemberID
+	ClassID
 	DateRegistration
 
 PrivateSession:
 	SessionID PK
-	MemberID FK
-	TrainerID FK
-	RoomID FK
+	MemberID
+	TrainerID
+	RoomID
 	SessionDate
 	SessionTime
 	ActivityType
@@ -71,16 +76,17 @@ PrivateSession:
 
 Payment:
 	PaymentID PK
-	MemberID FK
-	StaffID FK
+	MemberID
+	StaffID
 	Amount
+	Description
 	PaymentDate
 	PaymentType
 	Notes
 
 TrainerAvailability:
 	AvailabilityID PK
-	TrainerID FK
+	TrainerID
 	DayOfWeek
 	StartTime
 	EndTime
@@ -107,7 +113,7 @@ registersFor:diamond
 
 Member:-1..N->records-1..N->HealthMetric:
 
-Member:-1..N->books-1..N->PrivateSession:
+Member:-1..N->books-1->PrivateSession:
 
 Member:-1..N->registersFor-1..N->ClassRegistration:
 
