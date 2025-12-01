@@ -1,4 +1,4 @@
-# COMP3005 Final Project – Fitness Club Management System
+# Fitness Club Management System
 **Using Python, SQLAlchemy ORM, Flask UI, and PostgreSQL**
 
 This project implements a complete **Fitness Club Management System** with three user roles:
@@ -18,25 +18,35 @@ The system implements **all 12 core operations**, plus a required **View**, **Tr
 ```
 comp3005-fitness-orm/
 │
-├── app/                   # Flask web UI + service layer
-│   ├── web_app.py
+├── .env.example           # Template copied to .env for local creds
+├── app/                   # Flask web UI + service layer helpers
+│   ├── web_app.py         # Main Flask entry point
+│   ├── init_db.py         # Creates tables + trigger/view/index
+│   ├── demo_data.py       # Admin UI data reset helpers
 │   ├── member_service.py
 │   ├── trainer_service.py
 │   ├── admin_service.py
 │   └── templates/         # HTML (Bootstrap) templates
 │
-├── models/               # SQLAlchemy ORM models
-│   ├── base.py
+├── models/                # SQLAlchemy ORM models
+│   ├── base.py            # engine/session setup + load_dotenv
 │   ├── member.py
-│   └── scheduling.py
+│   ├── scheduling.py
+│   ├── equipment.py
+│   ├── notification.py
+│   └── payment.py
 │
-├── scripts/
-│   ├── seed_demo_data.py  # Populate trainer/room/class via ORM
+├── scripts/               # Stand-alone utility runners
+│   ├── seed_demo_data.py
+│   └── seed_admin_data.py
 │
-├── tests/                # Full pytest test suite
+├── tests/                 # Full pytest test suite
+│   ├── test_member_service.py
+│   ├── test_trainer_service.py
+│   └── test_admin_service.py
 │
-├── docs/
-│   └── ERD.pdf
+├── er_model/              # ER diagrams, PlantUML exports, screenshots
+├── ER to Relational Mapping/ # Assignment write-up artifacts
 │
 ├── requirements.txt
 ├── .gitignore
