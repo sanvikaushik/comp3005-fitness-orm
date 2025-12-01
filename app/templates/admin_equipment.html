@@ -59,11 +59,15 @@
     <div class="card shadow-sm">
       <div class="card-header">Update Equipment Status</div>
       <div class="card-body">
-        <form method="post" class="row g-2">
+        <form method="post" class="row g-2" data-equipment-update-form>
           <input type="hidden" name="action" value="update_equipment">
           <div class="col-12">
             <label class="form-label">Equipment ID</label>
-            <input type="number" name="equipment_id" class="form-control" required>
+            <div class="input-group" data-equipment-lookup>
+              <input type="number" name="equipment_id" class="form-control" required>
+              <button class="btn btn-outline-secondary" type="button" data-equipment-choose>Choose</button>
+            </div>
+            <div class="form-text text-danger d-none" data-equipment-error>Equipment ID not found.</div>
           </div>
           <div class="col-12">
             <label class="form-label">New Status</label>
@@ -96,7 +100,7 @@
             <textarea class="form-control" rows="2" name="notes"></textarea>
           </div>
           <div class="col-12 mt-2">
-            <button class="btn btn-outline-primary w-100" type="submit">Update</button>
+            <button class="btn btn-outline-primary w-100" type="submit" data-equipment-submit disabled>Update</button>
           </div>
         </form>
       </div>
@@ -172,7 +176,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Status</label>
-            <select name="issue_status" class="form-select">
+            <select name="issue_status" class="form-select" style="min-width: 140px">
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
@@ -213,7 +217,7 @@
                   <form method="post" class="d-flex gap-2 align-items-center">
                     <input type="hidden" name="action" value="update_issue">
                     <input type="hidden" name="issue_id" value="{{ issue.issue_id }}">
-                    <select name="new_issue_status" class="form-select form-select-sm">
+                    <select name="new_issue_status" class="form-select form-select-sm" style="min-width: 140px">
                       <option value="open" {% if issue.status == 'open' %}selected{% endif %}>Open</option>
                       <option value="in_progress" {% if issue.status == 'in_progress' %}selected{% endif %}>In Progress</option>
                       <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
@@ -233,4 +237,63 @@
     </div>
   </div>
 </div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const updateForm = document.querySelector('[data-equipment-update-form]');
+    if (!updateForm) {
+      return;
+    }
+    const equipmentLookup = {{ equipment_lookup | tojson | safe }};
+    const idInput = updateForm.querySelector('input[name="equipment_id"]');
+    const roomSelect = updateForm.querySelector('select[name="room_id"]');
+    const trainerSelect = updateForm.querySelector('select[name="trainer_id"]');
+    const chooseBtn = updateForm.querySelector('[data-equipment-choose]');
+    const errorEl = updateForm.querySelector('[data-equipment-error]');
+    const submitBtn = updateForm.querySelector('[data-equipment-submit]');
+    if (!idInput || !roomSelect || !trainerSelect || !chooseBtn) {
+      return;
+    }
+    const setSubmitEnabled = (enabled) => {
+      if (submitBtn) {
+        submitBtn.disabled = !enabled;
+      }
+    };
+    const applySelection = () => {
+      const raw = idInput.value.trim();
+      const id = parseInt(raw, 10);
+      if (!raw || Number.isNaN(id)) {
+        return false;
+      }
+      const info = equipmentLookup[String(id)] || equipmentLookup[id];
+      if (!info) {
+        return false;
+      }
+      roomSelect.value = info.room_id ? String(info.room_id) : '';
+      trainerSelect.value = info.trainer_id ? String(info.trainer_id) : '';
+      return true;
+    };
+    chooseBtn.addEventListener('click', () => {
+      const ok = applySelection();
+      if (ok) {
+        if (errorEl) {
+          errorEl.classList.add('d-none');
+        }
+        setSubmitEnabled(true);
+      } else {
+        if (errorEl) {
+          errorEl.classList.remove('d-none');
+        }
+        setSubmitEnabled(false);
+        roomSelect.value = '';
+        trainerSelect.value = '';
+      }
+    });
+    idInput.addEventListener('input', () => {
+      if (errorEl) {
+        errorEl.classList.add('d-none');
+      }
+      setSubmitEnabled(false);
+    });
+  });
+</script>
 {% endblock %}

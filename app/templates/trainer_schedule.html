@@ -31,7 +31,7 @@
         <small class="text-muted">Members + rooms</small>
       </div>
       <div class="card-body p-0">
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="max-height: 320px; overflow-y: auto;">
           <table class="table-clean table-auto align-middle mb-0">
             <thead>
             <tr>
@@ -39,6 +39,7 @@
               <th>End</th>
               <th>Member</th>
               <th>Room</th>
+              <th>Cost</th>
             </tr>
           </thead>
           <tbody>
@@ -48,9 +49,10 @@
               <td>{{ ps.end_time }}</td>
               <td>{{ ps.member.first_name }} {{ ps.member.last_name }}</td>
               <td>{{ ps.room.name if ps.room else ("Room " ~ ps.room_id) }}</td>
+              <td>${{ "%.2f"|format(ps.price or 0) }}</td>
             </tr>
           {% else %}
-            <tr><td colspan="4" class="text-muted text-center">No upcoming sessions.</td></tr>
+            <tr><td colspan="5" class="text-muted text-center">No upcoming sessions.</td></tr>
           {% endfor %}
             </tbody>
           </table>
@@ -69,7 +71,7 @@
         <small class="text-muted">Capacity awareness</small>
       </div>
       <div class="card-body p-0">
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="max-height: 320px; overflow-y: auto;">
           <table class="table-clean table-auto align-middle mb-0">
             <thead>
             <tr>
@@ -196,6 +198,42 @@
               <tr>
                 <td colspan="6" class="text-center text-muted py-3">
                   No billing items yet for your classes.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="table-divider mt-3"></div>
+        <div class="table-wrapper">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Session Start</th>
+                <th>Amount</th>
+                <th>Recorded</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for payment in schedule.private_session_payments %}
+              {% set session_obj = payment.private_session %}
+              <tr>
+                <td>{{ payment.member.first_name }} {{ payment.member.last_name }}</td>
+                <td>
+                  {% if session_obj %}
+                    {{ session_obj.start_time.strftime("%b %d %I:%M %p") }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>${{ "%.2f"|format(payment.amount) }}</td>
+                <td>{{ payment.paid_at.strftime("%b %d %I:%M %p") }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-3">
+                  No private session payments recorded yet.
                 </td>
               </tr>
             {% endfor %}

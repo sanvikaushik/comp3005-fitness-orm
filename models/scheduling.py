@@ -1,4 +1,5 @@
 from datetime import datetime, time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Integer,
@@ -12,6 +13,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .payment import Payment
 
 
 class Trainer(Base):
@@ -69,10 +73,16 @@ class PrivateSession(Base):
 
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    price: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False, default=75)
 
     member: Mapped["Member"] = relationship(back_populates="private_sessions")
     trainer: Mapped["Trainer"] = relationship(back_populates="private_sessions")
     room: Mapped["Room"] = relationship(back_populates="private_sessions")
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment",
+        back_populates="private_session",
+        cascade="all, delete-orphan",
+    )
 
 
 class ClassSchedule(Base):

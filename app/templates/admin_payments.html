@@ -36,6 +36,9 @@
                 {{ bill.class_schedule.name }}
                 with {{ bill.class_schedule.trainer.first_name }}
                 on {{ bill.class_schedule.start_time.strftime("%b %d %I:%M %p") }}
+              {% elif bill.trainer %}
+                Manual charge with {{ bill.trainer.first_name }} {{ bill.trainer.last_name }}<br>
+                {{ bill.description or "Custom billing" }}
               {% else %}
                 {{ bill.description }}
               {% endif %}
@@ -89,6 +92,17 @@
           <div class="col-12">
             <label class="form-label">Description</label>
             <input name="description" class="form-control" placeholder="e.g., Private coaching add-on">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Trainer (optional)</label>
+            <select name="trainer_id" class="form-select">
+              <option value="">Unassigned</option>
+              {% for trainer in trainers %}
+                <option value="{{ trainer.trainer_id }}">
+                  {{ trainer.first_name }} {{ trainer.last_name }} (#{{ trainer.trainer_id }})
+                </option>
+              {% endfor %}
+            </select>
           </div>
           <div class="col-12 mt-2">
             <button class="btn btn-primary w-100" type="submit">Create Bill</button>

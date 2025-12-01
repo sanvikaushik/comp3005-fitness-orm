@@ -21,6 +21,9 @@ from models.scheduling import (
     TrainerAvailability,
     PrivateSession,
 )
+from models.payment import Payment, BillingItem
+from app.calendar_window import get_booking_now
+from app.pricing import DEFAULT_PRIVATE_SESSION_PRICE
 
 
 def _ensure_room(session, *, name: str, capacity: int) -> Room:
@@ -128,6 +131,7 @@ def _ensure_private_session(
     room: Room,
     start_time: datetime,
     duration_hours: int,
+    price: float | None = None,
 ) -> PrivateSession:
     existing = session.scalar(
         select(PrivateSession).where(
@@ -138,17 +142,93 @@ def _ensure_private_session(
     )
     if existing:
         return existing
+    final_price = DEFAULT_PRIVATE_SESSION_PRICE if price is None else price
     ps = PrivateSession(
         member_id=member_obj.member_id,
         trainer_id=trainer.trainer_id,
         room_id=room.room_id,
         start_time=start_time,
         end_time=start_time + timedelta(hours=duration_hours),
+        price=final_price,
     )
     session.add(ps)
     session.commit()
     session.refresh(ps)
     return ps
+
+
+def _ensure_payment_for_private_session(
+    session,
+    *,
+    private_session: PrivateSession,
+    description: str | None = None,
+    amount: float | None = None,
+) -> Payment:
+    existing = session.scalar(
+        select(Payment).where(Payment.private_session_id == private_session.session_id)
+    )
+    if existing:
+        return existing
+    trainer_label = f"Trainer {private_session.trainer_id}"
+    if private_session.trainer:
+        trainer_label = (
+            f"{private_session.trainer.first_name} {private_session.trainer.last_name}"
+        )
+    desc = description or (
+        f"Private session with {trainer_label} on "
+        f"{private_session.start_time.strftime('%b %d %I:%M %p')}"
+    )
+    final_amount = amount if amount is not None else float(
+        private_session.price or DEFAULT_PRIVATE_SESSION_PRICE
+    )
+    payment = Payment(
+        member_id=private_session.member_id,
+        amount=final_amount,
+        description=desc,
+        paid_at=private_session.start_time - timedelta(hours=1),
+        private_session_id=private_session.session_id,
+    )
+    session.add(payment)
+    session.commit()
+    session.refresh(payment)
+    return payment
+
+
+def _ensure_billing_for_private_session(
+    session,
+    *,
+    private_session: PrivateSession,
+    status: str = "pending",
+) -> BillingItem:
+    existing = session.scalar(
+        select(BillingItem).where(
+            BillingItem.private_session_id == private_session.session_id
+        )
+    )
+    trainer = private_session.trainer
+    trainer_name = (
+        f"{trainer.first_name} {trainer.last_name}" if trainer else f"Trainer {private_session.trainer_id}"
+    )
+    desc = f"Private session with {trainer_name} on {private_session.start_time.strftime('%b %d %I:%M %p')}"
+    if existing:
+        existing.status = status
+        existing.description = desc
+        existing.amount = float(private_session.price or DEFAULT_PRIVATE_SESSION_PRICE)
+        if status == "paid":
+            existing.paid_at = private_session.start_time - timedelta(hours=1)
+        return existing
+    bill = BillingItem(
+        member_id=private_session.member_id,
+        private_session_id=private_session.session_id,
+        amount=float(private_session.price or DEFAULT_PRIVATE_SESSION_PRICE),
+        description=desc,
+        status=status,
+        paid_at=private_session.start_time - timedelta(hours=1) if status == "paid" else None,
+    )
+    session.add(bill)
+    session.commit()
+    session.refresh(bill)
+    return bill
 
 
 def run():
@@ -180,8 +260,8 @@ def run():
         _ensure_availability(session, trainer=tina, windows=weekday_windows)
         _ensure_availability(session, trainer=riley, windows=evening_windows)
 
-        # Upcoming demo classes for both trainers
-        now = datetime.utcnow()
+        # Upcoming demo classes for both trainers anchored to booking week
+        now = get_booking_now()
         _ensure_class(
             session,
             name="Demo Yoga",
@@ -214,7 +294,7 @@ def run():
             last_name="Member",
             email="jamie.member@example.com",
         )
-        _ensure_private_session(
+        alex_session = _ensure_private_session(
             session,
             member_obj=member_alex,
             trainer=riley,
@@ -222,7 +302,9 @@ def run():
             start_time=(now + timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0),
             duration_hours=1,
         )
-        _ensure_private_session(
+        _ensure_payment_for_private_session(session, private_session=alex_session)
+        _ensure_billing_for_private_session(session, private_session=alex_session, status="paid")
+        jamie_session = _ensure_private_session(
             session,
             member_obj=member_jamie,
             trainer=tina,
@@ -230,6 +312,8 @@ def run():
             start_time=(now + timedelta(days=4)).replace(hour=9, minute=0, second=0, microsecond=0),
             duration_hours=1,
         )
+        _ensure_payment_for_private_session(session, private_session=jamie_session)
+        _ensure_billing_for_private_session(session, private_session=jamie_session, status="paid")
 
         print("Demo data ready:")
         print(f"  Rooms: {[main_room.name, studio.name]}")

@@ -27,7 +27,7 @@
             </select>
           </div>
           <div class="col-12">
-            <label class="form-label">Week Slot (next 4 weeks)</label>
+            <label class="form-label">Week Slot</label>
             <select name="slot_start" class="form-select" required>
               {% for week in time_slots|groupby('week_label') %}
                 <optgroup label="{{ week.grouper }}">

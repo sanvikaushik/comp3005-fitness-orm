@@ -11,6 +11,7 @@ from app.admin_service import (
     create_equipment,
     log_equipment_issue,
     update_equipment_issue_status,
+    update_equipment_status,
 )
 from tests.helpers import add_trainer_availability
 
@@ -153,3 +154,43 @@ def test_equipment_issue_logging(session):
     )
     assert updated_issue.status == "resolved"
     assert updated_issue.resolved_at is not None
+
+
+def test_update_equipment_validates_room_and_trainer(session):
+    trainer, room1, room2, member = _setup_trainer_room_member(session)
+
+    equipment = create_equipment(
+        session,
+        name="Bench Press",
+        status="operational",
+        notes="",
+        room_id=room1.room_id,
+        trainer_id=trainer.trainer_id,
+    )
+
+    updated = update_equipment_status(
+        session,
+        equipment_id=equipment.equipment_id,
+        new_status="maintenance",
+        notes="Pads torn",
+        room_id=room2.room_id,
+        trainer_id=trainer.trainer_id,
+    )
+    assert updated.status == "maintenance"
+    assert updated.room_id == room2.room_id
+
+    with pytest.raises(ValueError, match="Room"):
+        update_equipment_status(
+            session,
+            equipment_id=equipment.equipment_id,
+            new_status="operational",
+            room_id=9999,
+        )
+
+    with pytest.raises(ValueError, match="Trainer"):
+        update_equipment_status(
+            session,
+            equipment_id=equipment.equipment_id,
+            new_status="operational",
+            trainer_id=9999,
+        )

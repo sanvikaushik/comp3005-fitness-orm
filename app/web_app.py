@@ -58,6 +58,7 @@ from app.admin_service import (
     record_payment,
 )
 from app.demo_data import clear_all_data, seed_demo_data
+from app.calendar_window import get_booking_now
 from app.notification_service import (
     add_member_notification,
     add_trainer_notification,
@@ -92,6 +93,14 @@ def ensure_schema_updates():
         conn.execute(
             text(
                 """
+                ALTER TABLE private_session
+                    ADD COLUMN IF NOT EXISTS price NUMERIC(8,2) DEFAULT 75;
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
                 ALTER TABLE equipment
                     ADD COLUMN IF NOT EXISTS room_id INTEGER REFERENCES room(room_id);
                 """
@@ -101,6 +110,30 @@ def ensure_schema_updates():
             text(
                 """
                 ALTER TABLE equipment
+                    ADD COLUMN IF NOT EXISTS trainer_id INTEGER REFERENCES trainer(trainer_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE payment
+                    ADD COLUMN IF NOT EXISTS private_session_id INTEGER REFERENCES private_session(session_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE billing_item
+                    ADD COLUMN IF NOT EXISTS private_session_id INTEGER UNIQUE REFERENCES private_session(session_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE billing_item
                     ADD COLUMN IF NOT EXISTS trainer_id INTEGER REFERENCES trainer(trainer_id);
                 """
             )
@@ -125,9 +158,11 @@ def generate_weekly_time_slots(
     end_hour: int = 17,
     step_minutes: int = 30,
     taken_map: dict[str, list[str]] | None = None,
+    now: datetime | None = None,
 ) -> list[dict[str, object]]:
     """Build grouped slot options for the next month, including taken metadata."""
-    now = datetime.utcnow()
+    if now is None:
+        now = datetime.utcnow()
     month_limit = now + timedelta(weeks=weeks)
     week_start = (now - timedelta(days=now.weekday())).replace(
         hour=0, minute=0, second=0, microsecond=0
@@ -324,8 +359,15 @@ FAKE_USERS = {
 def require_role(*roles: str):
     """Abort with 403 unless the current session role is in the allowed roles."""
     current = session.get("role")
-    allowed = roles or (None,)
-    if current not in allowed:
+    normalized_current = current.lower() if isinstance(current, str) else current
+    if roles:
+        allowed = {
+            role.lower() if isinstance(role, str) else role
+            for role in roles
+        }
+    else:
+        allowed = {None}
+    if normalized_current not in allowed:
         abort(403)
 
 
@@ -488,7 +530,7 @@ def member_register():
         first_name = request.form["first_name"]
         last_name = request.form["last_name"]
         email = request.form["email"]
-        target_weight = request.form.get("target_weight") or None
+        target_weight = request.form.get("target_weight")
         notes = request.form.get("notes") or None
 
         with get_session() as db:
@@ -498,7 +540,7 @@ def member_register():
                     first_name=first_name,
                     last_name=last_name,
                     email=email,
-                    target_weight=float(target_weight) if target_weight else None,
+                    target_weight=target_weight,
                     notes=notes,
                 )
                 flash(f"Member created with ID {m.member_id}", "success")
@@ -519,8 +561,9 @@ def member_dashboard(member_id: int):
 
     billing_items: list[BillingItem] = []
     with get_session() as session_db:
-        dashboard = get_member_dashboard(session_db, member_id)
-        upcoming_classes = list_upcoming_classes(session_db)
+        calendar_now = get_booking_now()
+        dashboard = get_member_dashboard(session_db, member_id, now=calendar_now)
+        upcoming_classes = list_upcoming_classes(session_db, now=calendar_now)
         trainer_stmt = (
             select(Trainer)
             .options(
@@ -547,8 +590,12 @@ def member_dashboard(member_id: int):
                 )
             )
         )
-        now_ref = datetime.utcnow()
-        pt_slot_groups = build_pt_slot_groups(session_db, trainers, now=now_ref, weeks=1)
+        pt_slot_groups = build_pt_slot_groups(
+            session_db,
+            trainers,
+            now=calendar_now,
+            weeks=1,
+        )
         available_classes = [
             cls for cls in upcoming_classes
             if cls.capacity > len(cls.registrations)
@@ -637,6 +684,8 @@ def member_dashboard(member_id: int):
                 select(BillingItem)
                 .options(
                     joinedload(BillingItem.class_schedule).joinedload(ClassSchedule.trainer),
+                    joinedload(BillingItem.private_session).joinedload(PrivateSession.trainer),
+                    joinedload(BillingItem.trainer),
                 )
                 .where(BillingItem.member_id == member_id)
                 .order_by(BillingItem.created_at.desc())
@@ -647,11 +696,15 @@ def member_dashboard(member_id: int):
         member_payments = list(
             session_db.scalars(
                 select(Payment)
-                .options(joinedload(Payment.member))
+                .options(
+                    joinedload(Payment.member),
+                    joinedload(Payment.private_session).joinedload(PrivateSession.trainer),
+                )
                 .where(Payment.member_id == member_id)
                 .order_by(Payment.paid_at.desc())
             )
         )
+        member_pending_bills = [bill for bill in billing_items if bill.status != "paid"]
         member_notifications = list(
             session_db.scalars(
                 select(Notification)
@@ -683,6 +736,7 @@ def member_dashboard(member_id: int):
         class_options=class_options,
         billing_items=billing_items,
         member_payments=member_payments,
+        member_pending_bills=member_pending_bills,
         member_notifications=member_notifications,
     )
 
@@ -690,7 +744,7 @@ def member_dashboard(member_id: int):
 
 @app.route("/members/<int:member_id>/metrics/new", methods=["POST"])
 def member_add_metric(member_id: int):
-    require_role("member")
+    require_role("member", "admin")
     sid = session.get("member_id")
     if sid and sid != member_id:
         abort(403)
@@ -725,7 +779,7 @@ def member_add_metric(member_id: int):
 
 @app.route("/members/<int:member_id>/sessions/book", methods=["POST"])
 def member_book_session(member_id: int):
-    require_role("member")
+    require_role("member", "admin")
     sid = session.get("member_id")
     if sid and sid != member_id:
         abort(403)
@@ -760,7 +814,7 @@ def member_book_session(member_id: int):
 
 @app.route("/members/<int:member_id>/classes/register", methods=["POST"])
 def member_register_class(member_id: int):
-    require_role("member")
+    require_role("member", "admin")
     sid = session.get("member_id")
     if sid and sid != member_id:
         abort(403)
@@ -778,7 +832,7 @@ def member_register_class(member_id: int):
 
 @app.route("/members/<int:member_id>/profile/update", methods=["POST"])
 def member_update_profile(member_id: int):
-    require_role("member")
+    require_role("member", "admin")
     sid = session.get("member_id")
     if sid and sid != member_id:
         abort(403)
@@ -797,7 +851,7 @@ def member_update_profile(member_id: int):
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
-                target_weight=float(target_weight) if target_weight else None,
+                target_weight=target_weight,
                 notes=notes or None,
             )
             flash("Profile updated.", "success")
@@ -825,7 +879,7 @@ def trainer_schedule(trainer_id: int):
     ensure_trainer_self(trainer_id)
 
     with get_session() as db:
-        schedule = get_trainer_schedule(db, trainer_id)
+        schedule = get_trainer_schedule(db, trainer_id, now=get_booking_now())
         trainer_notifications = list(
             db.scalars(
                 select(Notification)
@@ -1091,6 +1145,7 @@ def admin_room_booking():
     require_role("admin")
 
     with get_session() as db:
+        calendar_now = get_booking_now()
         upcoming_sessions = list(
             db.scalars(
                 select(PrivateSession)
@@ -1115,9 +1170,9 @@ def admin_room_booking():
             )
         )
         rooms = list(db.scalars(select(Room).order_by(Room.room_id)))
-        time_slots = generate_weekly_time_slots(weeks=1)
+        time_slots = generate_weekly_time_slots(weeks=1, now=calendar_now)
         if not time_slots:
-            time_slots = generate_weekly_time_slots(weeks=2)
+            time_slots = generate_weekly_time_slots(weeks=2, now=calendar_now)
 
     return render_template(
         "admin_room_booking.html",
@@ -1209,7 +1264,12 @@ def admin_class_management():
         room_map: dict[int, list[Room]] = {}
         for trainer in trainers:
             assigned = [r for r in rooms if r.primary_trainer_id == trainer.trainer_id]
-            room_map[trainer.trainer_id] = assigned or rooms
+            if assigned:
+                assigned_ids = {r.room_id for r in assigned}
+                shared = [r for r in rooms if r.room_id not in assigned_ids]
+                room_map[trainer.trainer_id] = assigned + shared
+            else:
+                room_map[trainer.trainer_id] = list(rooms)
 
         trainer_classes_map: dict[int, list[ClassSchedule]] = defaultdict(list)
         for cls in classes:
@@ -1303,13 +1363,13 @@ def admin_class_management():
             if editing_class:
                 selected_trainer_id = editing_class.trainer_id
 
-        now = datetime.utcnow()
-        horizon = now + timedelta(weeks=4)
+        calendar_now = get_booking_now()
+        horizon = calendar_now + timedelta(weeks=1)
         busy_map: dict[int, list[tuple[datetime, datetime]]] = defaultdict(list)
 
         private_sessions = db.scalars(
             select(PrivateSession).where(
-                PrivateSession.start_time >= now,
+                PrivateSession.start_time >= calendar_now,
                 PrivateSession.start_time < horizon,
             )
         ).all()
@@ -1318,7 +1378,7 @@ def admin_class_management():
 
         editing_class_id = editing_class.class_id if editing_class else None
         for cls in classes:
-            if cls.start_time < now or cls.start_time >= horizon:
+            if cls.start_time < calendar_now or cls.start_time >= horizon:
                 continue
             if editing_class_id and cls.class_id == editing_class_id:
                 continue
@@ -1328,8 +1388,8 @@ def admin_class_management():
         for trainer in trainers:
             slot_map[trainer.trainer_id] = build_class_slot_options(
                 trainer,
-                base=now,
-                weeks=4,
+                base=calendar_now,
+                weeks=1,
                 busy_windows=busy_map.get(trainer.trainer_id, []),
             )
 
@@ -1337,6 +1397,20 @@ def admin_class_management():
         if editing_class and editing_class.room:
             if all(room.room_id != editing_class.room_id for room in selected_rooms):
                 selected_rooms.append(editing_class.room)
+
+        room_option_payload: list[dict[str, object]] = []
+        seen_room_ids: set[int] = set()
+        for room in selected_rooms:
+            if room.room_id in seen_room_ids:
+                continue
+            seen_room_ids.add(room.room_id)
+            room_option_payload.append(
+                {
+                    "room_id": room.room_id,
+                    "name": room.name,
+                    "capacity": room.capacity,
+                }
+            )
 
         time_slots = list(slot_map.get(selected_trainer_id, []))
         selected_slot_value = None
@@ -1358,7 +1432,7 @@ def admin_class_management():
     return render_template(
         "admin_classes.html",
         trainers=trainers,
-        room_options=selected_rooms,
+        room_options=room_option_payload,
         selected_trainer_id=selected_trainer_id,
         classes=classes,
         time_slots=time_slots,
@@ -1473,6 +1547,10 @@ def admin_equipment():
                 .order_by(Equipment.equipment_id)
             )
         )
+        equipment_lookup = {
+            e.equipment_id: {"room_id": e.room_id, "trainer_id": e.trainer_id}
+            for e in equipment
+        }
         issue_stmt = (
             select(EquipmentIssue)
             .options(
@@ -1491,6 +1569,7 @@ def admin_equipment():
         issues=issues,
         rooms=rooms,
         trainers=trainers,
+        equipment_lookup=equipment_lookup,
     )
 
 
@@ -1507,12 +1586,18 @@ def admin_payments():
                     member_id = int(request.form["member_id"])
                     amount = float(request.form["amount"])
                     description = request.form.get("description") or ""
+                    trainer_id_raw = request.form.get("trainer_id")
+                    trainer_id = int(trainer_id_raw) if trainer_id_raw else None
+                    if trainer_id and not db.get(Trainer, trainer_id):
+                        raise ValueError("Trainer not found")
                     bill = BillingItem(
                         member_id=member_id,
                         class_id=None,
+                        private_session_id=None,
                         amount=amount,
                         description=description or "Manual bill",
                         status="pending",
+                        trainer_id=trainer_id,
                     )
                     db.add(bill)
                     db.commit()
@@ -1527,6 +1612,7 @@ def admin_payments():
                         member_id=bill.member_id,
                         amount=float(bill.amount),
                         description=bill.description or "Class payment",
+                        private_session_id=bill.private_session_id,
                     )
                     bill.status = "paid"
                     bill.paid_at = datetime.utcnow()
@@ -1555,6 +1641,7 @@ def admin_payments():
                     joinedload(BillingItem.member),
                     joinedload(BillingItem.class_schedule)
                     .joinedload(ClassSchedule.trainer),
+                    joinedload(BillingItem.trainer),
                 )
                 .where(BillingItem.status != "paid")
                 .order_by(BillingItem.created_at)
@@ -1569,12 +1656,14 @@ def admin_payments():
             ).unique().scalars()
         )
         members = list(db.scalars(select(Member).order_by(Member.first_name)))
+        trainers = list(db.scalars(select(Trainer).order_by(Trainer.first_name)))
 
     return render_template(
         "admin_payments.html",
         pending_bills=pending_bills,
         payments=payments,
         members=members,
+        trainers=trainers,
     )
 
 

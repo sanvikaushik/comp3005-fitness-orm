@@ -18,6 +18,35 @@ from models.scheduling import (
     TrainerAvailability,
 )
 from models.payment import BillingItem
+from app.pricing import DEFAULT_PRIVATE_SESSION_PRICE
+
+MAX_TARGET_WEIGHT_KG = 300.0
+
+
+def _normalize_target_weight(
+    value: Optional[float | str],
+    *,
+    current: Optional[float] = None,
+) -> Optional[float]:
+    """
+    Ensure target weight is numeric and within the allowed range.
+    Accepts floats or numeric strings; blank strings become None.
+    """
+    if value is None:
+        return current
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return current
+        try:
+            value = float(stripped)
+        except ValueError:
+            raise ValueError("Target weight must be a valid number.")
+    if value < 0:
+        raise ValueError("Target weight must be a positive number.")
+    if value > MAX_TARGET_WEIGHT_KG:
+        return current
+    return value
 
 
 # 1. Create or Update Member Profile
@@ -33,6 +62,8 @@ def create_member(
     target_weight: Optional[float] = None,
     notes: Optional[str] = None,
 ) -> Member:
+    normalized_target = _normalize_target_weight(target_weight)
+
     member = Member(
         first_name=first_name,
         last_name=last_name,
@@ -40,7 +71,7 @@ def create_member(
         phone_number=phone_number,
         date_of_birth=date_of_birth,
         gender=gender,
-        target_weight=target_weight,
+        target_weight=normalized_target,
         notes=notes,
     )
     session.add(member)
@@ -73,7 +104,12 @@ def update_member(
         "notes",
     }
     for key, value in changes.items():
-        if key in allowed_fields:
+        if key not in allowed_fields:
+            continue
+        if key == "target_weight":
+            normalized = _normalize_target_weight(value, current=member.target_weight)
+            setattr(member, key, normalized)
+        else:
             setattr(member, key, value)
 
     try:
@@ -155,6 +191,48 @@ def _ensure_trainer_availability(
         raise ValueError("Requested time is outside the trainer's available hours.")
 
 
+def _format_private_payment_description(
+    trainer: Trainer | None,
+    start_time: datetime,
+) -> str:
+    if trainer:
+        trainer_name = f"{trainer.first_name} {trainer.last_name}"
+    else:
+        trainer_name = "trainer"
+    return f"Private session with {trainer_name} on {start_time.strftime('%b %d %I:%M %p')}"
+
+
+def _ensure_private_billing(
+    session: Session,
+    private_session: PrivateSession,
+    *,
+    trainer: Trainer | None,
+) -> BillingItem:
+    desc = _format_private_payment_description(trainer, private_session.start_time)
+    bill = session.scalar(
+        select(BillingItem).where(
+            BillingItem.private_session_id == private_session.session_id
+        )
+    )
+    if bill:
+        bill.description = desc
+        bill.amount = float(private_session.price or 0)
+        bill.updated_at = datetime.utcnow()
+        if trainer:
+            bill.trainer_id = trainer.trainer_id
+        return bill
+    bill = BillingItem(
+        member_id=private_session.member_id,
+        private_session_id=private_session.session_id,
+        trainer_id=trainer.trainer_id if trainer else None,
+        amount=float(private_session.price or 0),
+        description=desc,
+        status="pending",
+    )
+    session.add(bill)
+    return bill
+
+
 # 3. Book or Reschedule a Private Session
 def book_private_session(
     session: Session,
@@ -164,14 +242,17 @@ def book_private_session(
     room_id: int,
     start_time: datetime,
     end_time: datetime,
+    price: float | None = None,
 ) -> PrivateSession:
     if start_time >= end_time:
         raise ValueError("start_time must be before end_time")
 
     # Basic existence checks
-    if not session.get(Member, member_id):
+    member = session.get(Member, member_id)
+    if not member:
         raise ValueError("Member not found")
-    if not session.get(Trainer, trainer_id):
+    trainer = session.get(Trainer, trainer_id)
+    if not trainer:
         raise ValueError("Trainer not found")
     if not session.get(Room, room_id):
         raise ValueError("Room not found")
@@ -244,14 +325,19 @@ def book_private_session(
     if session.scalars(member_class_stmt).first():
         raise ValueError("Member is registered for a class in that time")
 
+    final_price = DEFAULT_PRIVATE_SESSION_PRICE if price is None else price
+
     private = PrivateSession(
         member_id=member_id,
         trainer_id=trainer_id,
         room_id=room_id,
         start_time=start_time,
         end_time=end_time,
+        price=final_price,
     )
     session.add(private)
+    session.flush()
+    _ensure_private_billing(session, private, trainer=trainer)
     session.commit()
     session.refresh(private)
     return private
@@ -346,6 +432,8 @@ def reschedule_private_session(
     private.start_time = start_time
     private.end_time = end_time
 
+    trainer = private.trainer
+    _ensure_private_billing(session, private, trainer=trainer)
     session.commit()
     session.refresh(private)
     return private
@@ -453,11 +541,14 @@ def _ensure_class_billing(session: Session, member_id: int, cls: ClassSchedule) 
     )
     existing = session.scalars(bill_stmt).first()
     if existing:
+        if existing.trainer_id != cls.trainer_id:
+            existing.trainer_id = cls.trainer_id
         return existing
 
     bill = BillingItem(
         member_id=member_id,
         class_id=cls.class_id,
+        trainer_id=cls.trainer_id,
         amount=float(cls.price or 0),
         description=f"Class {cls.name} with {cls.trainer.first_name}",
         status="pending",
@@ -587,4 +678,5 @@ def get_member_dashboard(
         },
         "upcoming_private_sessions": upcoming_private_sessions,
         "upcoming_classes": upcoming_classes,
+        "pt_session_price": DEFAULT_PRIVATE_SESSION_PRICE,
     }

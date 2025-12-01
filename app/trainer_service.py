@@ -15,7 +15,7 @@ from models.scheduling import (
     Room,
 )
 from models.member import Member, HealthMetric
-from models.payment import BillingItem
+from models.payment import BillingItem, Payment
 from models.equipment import EquipmentIssue, Equipment
 from models.base import get_session
 
@@ -204,12 +204,30 @@ def get_trainer_schedule(
         .options(
             joinedload(BillingItem.member),
             joinedload(BillingItem.class_schedule).joinedload(ClassSchedule.room),
+            joinedload(BillingItem.trainer),
         )
-        .join(ClassSchedule, BillingItem.class_id == ClassSchedule.class_id)
-        .where(ClassSchedule.trainer_id == trainer_id)
+        .where(
+            or_(
+                BillingItem.trainer_id == trainer_id,
+                BillingItem.class_schedule.has(ClassSchedule.trainer_id == trainer_id),
+            )
+        )
         .order_by(BillingItem.created_at.desc())
     )
-    billing_items = list(session.scalars(billing_stmt))
+    billing_items = list(session.scalars(billing_stmt).unique())
+
+    pt_payment_stmt = (
+        select(Payment)
+        .options(
+            joinedload(Payment.member),
+            joinedload(Payment.private_session)
+            .joinedload(PrivateSession.room),
+        )
+        .join(PrivateSession, Payment.private_session_id == PrivateSession.session_id)
+        .where(PrivateSession.trainer_id == trainer_id)
+        .order_by(Payment.paid_at.desc())
+    )
+    private_session_payments = list(session.scalars(pt_payment_stmt))
 
     trainer_room_ids = {room.room_id for room in trainer.primary_rooms}
 
@@ -255,6 +273,7 @@ def get_trainer_schedule(
             upcoming_classes, key=lambda c: c.start_time
         ),
         "billing_items": billing_items,
+        "private_session_payments": private_session_payments,
         "equipment_issues": equipment_issues,
         "equipment_inventory": equipment_inventory,
     }
@@ -365,8 +384,6 @@ def create_or_update_class(
     room = session.get(Room, room_id)
     if not room:
         raise ValueError("Room not found")
-    if room.primary_trainer_id and room.primary_trainer_id != trainer_id:
-        raise ValueError("Room is not assigned to this trainer")
 
     # If updating, fetch existing class and make sure trainer matches
     existing_class: Optional[ClassSchedule] = None

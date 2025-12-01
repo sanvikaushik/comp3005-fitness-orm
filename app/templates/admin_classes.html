@@ -39,7 +39,7 @@
           </div>
         </form>
         {% set trainer_classes = trainer_classes_map.get(selected_trainer_id, []) %}
-        {% if trainer_classes %}
+        {% if editing_class and trainer_classes %}
           <form method="get" class="mb-3">
             <input type="hidden" name="trainer_id" value="{{ selected_trainer_id }}">
             <label class="form-label">Edit Existing Class</label>
@@ -56,30 +56,24 @@
               <button class="btn btn-outline-primary" type="submit">Load</button>
             </div>
           </form>
+        {% elif trainer_classes %}
+          <div class="alert alert-info small">
+            Select a class from the schedule table below and press <strong>Edit</strong> to load it here.
+          </div>
         {% endif %}
         <form method="post" class="row g-2">
           {% if editing_class %}
             <input type="hidden" name="class_id" value="{{ editing_class.class_id }}">
           {% endif %}
+          <input type="hidden"
+                 name="trainer_id"
+                 value="{{ editing_class.trainer_id if editing_class else (selected_trainer_id or '') }}">
           <div class="col-12">
             <label class="form-label">Class Name</label>
             <input name="name"
                    class="form-control"
                    value="{{ editing_class.name if editing_class else '' }}"
                    required>
-          </div>
-          <div class="col-12">
-            <label class="form-label">Trainer</label>
-            <select name="trainer_id" class="form-select" required>
-              {% for trainer in trainers %}
-                <option value="{{ trainer.trainer_id }}"
-                        {% if editing_class %}
-                          {% if trainer.trainer_id == editing_class.trainer_id %}selected{% endif %}
-                        {% elif trainer.trainer_id == selected_trainer_id %}selected{% endif %}>
-                  {{ trainer.first_name }} {{ trainer.last_name }} (#{{ trainer.trainer_id }})
-                </option>
-              {% endfor %}
-            </select>
           </div>
           <div class="col-12">
             <label class="form-label">Room</label>
@@ -99,7 +93,7 @@
             {% endif %}
           </div>
           <div class="col-12">
-            <label class="form-label">Week Slot (next 4 weeks)</label>
+            <label class="form-label">Week Slot</label>
             {% if time_slots %}
               <select name="slot_start" class="form-select" required>
                 {% for week in time_slots|groupby('week_label') %}

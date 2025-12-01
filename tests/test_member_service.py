@@ -14,8 +14,10 @@ from app.member_service import (
     register_for_class,
     get_member_dashboard,
 )
+from app.pricing import DEFAULT_PRIVATE_SESSION_PRICE
 from models.scheduling import Trainer, Room, ClassSchedule, ClassRegistration
 from models.payment import BillingItem
+from models.member import Member
 from tests.helpers import add_trainer_availability
 
 
@@ -30,6 +32,30 @@ def test_create_and_update_member(session):
 
     m2 = update_member(session, m.member_id, phone_number="1234567890")
     assert m2.phone_number == "1234567890"
+
+
+def test_create_member_target_weight_cap(session):
+    member = create_member(
+        session,
+        first_name="Max",
+        last_name="Heavy",
+        email="max.heavy@example.com",
+        target_weight=350.0,
+    )
+    assert member.target_weight is None
+
+
+def test_update_member_target_weight_cap(session):
+    member = create_member(
+        session,
+        first_name="Nora",
+        last_name="Goal",
+        email="nora.goal@example.com",
+        target_weight=280.0,
+    )
+    update_member(session, member.member_id, target_weight=500.0)
+    refreshed = session.get(Member, member.member_id)
+    assert refreshed.target_weight == pytest.approx(280.0)
 
 
 def test_log_and_view_health_metrics(session):
@@ -84,6 +110,44 @@ def test_book_private_session_no_conflicts(session):
     )
 
     assert private.session_id is not None
+    assert float(private.price) == DEFAULT_PRIVATE_SESSION_PRICE
+    bill = session.scalar(
+        select(BillingItem).where(BillingItem.private_session_id == private.session_id)
+    )
+    assert bill is not None
+    assert bill.status == "pending"
+    assert float(bill.amount) == DEFAULT_PRIVATE_SESSION_PRICE
+
+
+def test_book_private_session_custom_price(session):
+    member = create_member(
+        session,
+        first_name="Cara",
+        last_name="Member",
+        email="cara@example.com",
+    )
+    trainer, room = _setup_trainer_room_and_class(session)
+
+    start = (datetime.utcnow() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    end = start + timedelta(hours=1)
+
+    private = book_private_session(
+        session,
+        member_id=member.member_id,
+        trainer_id=trainer.trainer_id,
+        room_id=room.room_id,
+        start_time=start,
+        end_time=end,
+        price=105.5,
+    )
+
+    assert float(private.price) == pytest.approx(105.5)
+    bill = session.scalar(
+        select(BillingItem).where(BillingItem.private_session_id == private.session_id)
+    )
+    assert bill is not None
+    assert bill.status == "pending"
+    assert float(bill.amount) == pytest.approx(105.5)
 
 
 def test_book_private_session_conflicts_with_member_class(session):

@@ -54,6 +54,9 @@
           <div class="col-12">
             <label class="form-label mb-1">Target Weight (kg)</label>
             <input name="target_weight"
+                   type="number"
+                   step="0.1"
+                   max="300"
                    class="form-control"
                    value="{{ dashboard.profile.target_weight or '' }}">
           </div>
@@ -223,7 +226,7 @@
       </div>
       <div class="card-body p-0">
         <div class="p-3 pt-2 text-muted small">
-          Work 1-on-1 with a trainer. Pick a slot that fits the PT availability table below.
+          Work 1-on-1 with a trainer. Pick a slot that fits the PT availability table below. Each booking costs ${{ "%.2f"|format(dashboard.pt_session_price or 0) if dashboard.pt_session_price is defined else "85.00" }}.
         </div>
         <div class="table-wrapper">
           <table class="table-clean align-middle">
@@ -233,6 +236,7 @@
                 <th>End</th>
                 <th>Room</th>
                 <th>Trainer</th>
+                <th>Cost</th>
               </tr>
             </thead>
             <tbody>
@@ -250,10 +254,11 @@
                     {{ ps.trainer.first_name if ps.trainer else "Trainer" }} {{ ps.trainer.last_name if ps.trainer else ps.trainer_id }}
                   </span>
                 </td>
+                <td>${{ "%.2f"|format(ps.price or 0) }}</td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="4" class="text-center text-muted small py-3">
+                <td colspan="5" class="text-center text-muted small py-3">
                   No private sessions scheduled.
                 </td>
               </tr>
@@ -398,7 +403,7 @@
         <span class="text-muted small">See capacity before registering</span>
       </div>
       <div class="card-body p-0">
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="max-height: 340px; overflow-y:auto;">
           <table class="table-clean table-auto align-middle mb-0">
             <thead>
               <tr class="small text-center">
@@ -556,6 +561,11 @@
                   {% if bill.class_schedule and bill.class_schedule.trainer %}
                     {{ bill.class_schedule.trainer.first_name }}
                     {{ bill.class_schedule.trainer.last_name }}
+                  {% elif bill.private_session and bill.private_session.trainer %}
+                    {{ bill.private_session.trainer.first_name }}
+                    {{ bill.private_session.trainer.last_name }}
+                  {% elif bill.trainer %}
+                    {{ bill.trainer.first_name }} {{ bill.trainer.last_name }}
                   {% else %}
                     —
                   {% endif %}
@@ -585,13 +595,53 @@
           </table>
         </div>
         <div class="table-divider"></div>
+        {% if member_pending_bills %}
+        <div class="table-wrapper mb-3">
+          <table class="table-clean table-auto align-middle mb-0">
+            <thead>
+              <tr class="small text-center">
+                <th colspan="4" class="text-start">Pending Payments</th>
+              </tr>
+              <tr class="small text-center">
+                <th>Created</th>
+                <th>Amount</th>
+                <th class="text-start">Description</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for bill in member_pending_bills %}
+              <tr class="small text-center">
+                <td>{{ bill.created_at.strftime("%b %d %I:%M %p") }}</td>
+                <td>${{ "%.2f"|format(bill.amount) }}</td>
+                <td class="text-start">
+                  {% if bill.class_schedule %}
+                    Class: {{ bill.class_schedule.name }}
+                  {% elif bill.private_session %}
+                    PT Session: {{ bill.private_session.start_time.strftime("%b %d %I:%M %p") }}
+                  {% elif bill.trainer %}
+                    Trainer: {{ bill.trainer.first_name }} {{ bill.trainer.last_name }}<br>
+                    {{ bill.description or "Manual charge" }}
+                  {% else %}
+                    {{ bill.description or "Manual charge" }}
+                  {% endif %}
+                </td>
+                <td><span class="badge bg-warning-subtle text-warning">{{ bill.status|capitalize }}</span></td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-center text-muted small py-3">No pending bills.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
         <div class="table-wrapper">
           <table class="table-clean table-auto align-middle mb-0">
             <thead>
               <tr class="small text-center">
                 <th>Payment Date</th>
                 <th>Amount</th>
-                <th>Description</th>
+                <th class="text-start">Trainer / Description</th>
               </tr>
             </thead>
             <tbody>
@@ -599,7 +649,19 @@
               <tr class="small text-center">
                 <td>{{ payment.paid_at.strftime("%b %d %I:%M %p") }}</td>
                 <td>${{ "%.2f"|format(payment.amount) }}</td>
-                <td class="text-start">{{ payment.description or "Payment" }}</td>
+                <td class="text-start">
+                  {% if payment.private_session and payment.private_session.trainer %}
+                    <div class="fw-semibold">
+                      {{ payment.private_session.trainer.first_name }}
+                      {{ payment.private_session.trainer.last_name }}
+                    </div>
+                    <div class="text-muted">
+                      {{ payment.description or "Private session payment" }}
+                    </div>
+                  {% else %}
+                    {{ payment.description or "Payment" }}
+                  {% endif %}
+                </td>
               </tr>
             {% else %}
               <tr>

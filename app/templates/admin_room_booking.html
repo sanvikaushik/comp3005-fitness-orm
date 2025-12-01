@@ -5,6 +5,10 @@
   Assign rooms for private sessions or group classes. Forms below reuse the same safeguards
   that prevent double-booking trainers or rooms.
 </p>
+<div class="alert alert-info small">
+  Rooms aren't tied to a specific trainer here—room booking & scheduling only cares about the time window.
+  Any trainer can use any room as long as that slot is open, and the conflict checks below guard overlaps automatically.
+</div>
 
 <div class="row g-3">
   <div class="col-lg-7">
@@ -24,6 +28,7 @@
                 <th>Room</th>
                 <th>Start</th>
                 <th>End</th>
+                <th>Cost</th>
               </tr>
             </thead>
             <tbody>
@@ -41,9 +46,10 @@
                 <td>{{ ps.room.name if ps.room else ("Room " ~ ps.room_id) }}</td>
                 <td>{{ ps.start_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
                 <td>{{ ps.end_time.strftime("%Y-%m-%d %I:%M %p") }}</td>
+                <td>${{ "%.2f"|format(ps.price or 0) }}</td>
               </tr>
             {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-3">No scheduled sessions.</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-3">No scheduled sessions.</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -151,7 +157,7 @@
             </select>
           </div>
           <div class="col-12">
-            <label class="form-label">Week Slot (next 4 weeks)</label>
+            <label class="form-label">Week Slot</label>
             <select class="form-select" name="slot_start" required>
               {% for week in time_slots|groupby('week_label') %}
                 <optgroup label="{{ week.grouper }}">

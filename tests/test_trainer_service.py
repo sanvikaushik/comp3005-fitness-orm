@@ -258,3 +258,78 @@ def test_create_class_with_conflict_fails(session):
             end_time=end2,
             price=55.0,
         )
+
+
+def test_class_can_use_room_assigned_to_other_trainer(session):
+    trainer_a = Trainer(first_name="Alex", last_name="Alpha", email="alex@example.com")
+    trainer_b = Trainer(first_name="Bailey", last_name="Beta", email="bailey@example.com")
+    session.add_all([trainer_a, trainer_b])
+    session.commit()
+    session.refresh(trainer_a)
+    session.refresh(trainer_b)
+    add_trainer_availability(session, trainer_a)
+
+    shared_room = Room(
+        name="Shared Studio",
+        capacity=20,
+        primary_trainer_id=trainer_b.trainer_id,
+    )
+    session.add(shared_room)
+    session.commit()
+    session.refresh(shared_room)
+
+    start_time = (datetime.utcnow() + timedelta(days=1)).replace(
+        hour=10, minute=0, second=0, microsecond=0
+    )
+    end_time = start_time + timedelta(hours=1)
+
+    cls = create_or_update_class(
+        session,
+        trainer_id=trainer_a.trainer_id,
+        room_id=shared_room.room_id,
+        name="Shared Access",
+        capacity=12,
+        start_time=start_time,
+        end_time=end_time,
+        price=60.0,
+    )
+
+    assert cls.room_id == shared_room.room_id
+    assert cls.trainer_id == trainer_a.trainer_id
+
+
+def test_room_conflict_blocks_other_trainers(session):
+    trainer_a, room = _setup_trainer_and_room(session)
+    trainer_b = Trainer(first_name="Brett", last_name="Backup", email="brett@example.com")
+    session.add(trainer_b)
+    session.commit()
+    session.refresh(trainer_b)
+    add_trainer_availability(session, trainer_b)
+
+    start_time = (datetime.utcnow() + timedelta(days=1)).replace(
+        hour=13, minute=0, second=0, microsecond=0
+    )
+    end_time = start_time + timedelta(hours=1)
+
+    create_or_update_class(
+        session,
+        trainer_id=trainer_a.trainer_id,
+        room_id=room.room_id,
+        name="Booked Window",
+        capacity=10,
+        start_time=start_time,
+        end_time=end_time,
+        price=30.0,
+    )
+
+    with pytest.raises(ValueError, match="Room is not available"):
+        create_or_update_class(
+            session,
+            trainer_id=trainer_b.trainer_id,
+            room_id=room.room_id,
+            name="Conflicting Class",
+            capacity=10,
+            start_time=start_time,
+            end_time=end_time,
+            price=35.0,
+        )
