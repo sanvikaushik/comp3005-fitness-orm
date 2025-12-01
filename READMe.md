@@ -9,7 +9,7 @@ This project implements a complete **Fitness Club Management System** with three
 
 It uses **SQLAlchemy ORM** for all database interactions, **PostgreSQL** as the relational database, and **Flask** for a lightweight web-based UI to demo the operations.
 
-The system implements **all 12 core operations**, plus a required **View**, **Trigger**, and **Index**, and satisfies the course ORM rubric.
+The system implements **all 12 core operations**, plus a required **View**, **Trigger**, and **Index**.
 
 ---
 
