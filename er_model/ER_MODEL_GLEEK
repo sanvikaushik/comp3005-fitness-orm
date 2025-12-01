@@ -1,5 +1,5 @@
 Member:
-	MemberID 
+	MemberID PK
 	FirstName
 	LastName
 	Email
@@ -19,7 +19,7 @@ Trainer:
 	IsActive
 
 AdministrativeStaff:
-	StaffID
+	StaffID PK
 	FirstName
 	LastName
 	Email
@@ -94,8 +94,8 @@ TrainerAvailability:
 
 EquipmentMaintenance:
 	MaintenanceID PK
-	EquipmentID FK
-	StaffID FK
+	EquipmentID
+	StaffID
 	ReportedAt
 	Description
 	Status
@@ -111,7 +111,7 @@ contains:diamond
 maintenanceReport:diamond
 registersFor:diamond
 
-AdministrativeStaff:-1-processes-0..N- Payment:
+AdministrativeStaff:-0..N-processes-0..N- Payment:
 
 AdministrativeStaff:-0..N-maintenanceReport-0..N-EquipmentMaintenance:
 
