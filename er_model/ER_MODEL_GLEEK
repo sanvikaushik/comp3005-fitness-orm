@@ -1,4 +1,3 @@
-
 Member:
 	MemberID 
 	FirstName
@@ -29,7 +28,7 @@ Room:
 	RoomName
 	Capacity
 
-Equipment
+Equipment:
 	EquipmentID PK
 	RoomID FK
 	Name
@@ -98,25 +97,33 @@ EquipmentMaintenance:
 
 records:diamond
 books:diamond
-avalibilityStatus:diamond
+avalibilitySlots:diamond
 teaches:diamond
 usesRoom:diamond
 processes:diamond
 contains:diamond
 maintenanceReport:diamond
+registersFor:diamond
 
-Member:-1->records-N->HealthMetric:
+Member:-1..N->records-1..N->HealthMetric:
 
-Member:-1-->books-N--> registersFor ClassRegistration
-ClassSchedule 1--N registersFor ClassRegistration
-Trainer 1--N teaches ClassSchedule
-Room 1--N usesRoom ClassSchedule
-Room 1--N contains Equipment
-Member 1--N books PrivateSession
-Trainer 1--N books PrivateSession
-Room 1--N books PrivateSession
-Member 1--N processes Payment
-AdministrativeStaff 1--N processes Payment
-Trainer 1--N availabilitySlots TrainerAvailability
-Equipment 1--N maintenanceReport EquipmentMaintenance
-AdministrativeStaff 1--N maintenanceReport EquipmentMaintenance
+Member:-1..N->books-1..N->PrivateSession:
+
+Member:-1..N->registersFor-1..N->ClassRegistration:
+
+Member:-1..N->processes-1..N->Payment:
+
+Trainer:-1..N->books-1..N->PrivateSession:
+
+Trainer:-1..N->avalibilitySlots-1..N->TrainerAvailability:
+
+Trainer:-1..N->teaches-1..N->ClassSchedule:
+
+Room:-1..N->books-1..N->PrivateSession:
+
+Room:-1..N->usesRoom-1..N->ClassSchedule:
+
+Room:-1..N->contains-1..N->Equipment:
+
+Equipment:-1..N->maintenanceReport-1..N->EquipmentMaintenance:
+
