@@ -1,0 +1,122 @@
+
+Member:
+	MemberID 
+	FirstName
+	LastName
+	Email
+	PhoneNumber
+	DateOfBirth
+	Gender
+
+Trainer:
+	TrainerID
+	FirstName
+	LastName
+	Email
+	PhoneNumber
+	Specialization
+	IsActive
+
+AdministrativeStaff:
+	StaffID
+	FirstName
+	LastName
+	Email
+	Password
+
+Room:
+	RoomID PK
+	RoomName
+	Capacity
+
+Equipment
+	EquipmentID PK
+	RoomID FK
+	Name
+	Status
+	LastServicedDate
+
+HealthMetric:
+	MetricID PK
+	MemberID FK
+	RecordedAt
+	Weight
+	Height
+	TargetWeight
+	HeartRate
+
+ClassSchedule:
+	ClassID PK
+	ClassName
+	TrainerID FK
+	RoomID FK
+	DayOfWeek
+	StartTime
+	MaxCapacity
+
+ClassRegistration:
+	RegistrationID PK
+	MemberID FK
+	ClassID FK
+	DateRegistration
+
+PrivateSession:
+	SessionID PK
+	MemberID FK
+	TrainerID FK
+	RoomID FK
+	SessionDate
+	SessionTime
+	ActivityType
+	IsConflict
+
+Payment:
+	PaymentID PK
+	MemberID FK
+	StaffID FK
+	Amount
+	PaymentDate
+	PaymentType
+	Notes
+
+TrainerAvailability:
+	AvailabilityID PK
+	TrainerID FK
+	DayOfWeek
+	StartTime
+	EndTime
+	IsRecurring
+
+EquipmentMaintenance:
+	MaintenanceID PK
+	EquipmentID FK
+	StaffID FK
+	ReportedAt
+	Description
+	Status
+	ResolvedAt
+
+records:diamond
+books:diamond
+avalibilityStatus:diamond
+teaches:diamond
+usesRoom:diamond
+processes:diamond
+contains:diamond
+maintenanceReport:diamond
+
+Member:-1->records-N->HealthMetric:
+
+Member:-1-->books-N--> registersFor ClassRegistration
+ClassSchedule 1--N registersFor ClassRegistration
+Trainer 1--N teaches ClassSchedule
+Room 1--N usesRoom ClassSchedule
+Room 1--N contains Equipment
+Member 1--N books PrivateSession
+Trainer 1--N books PrivateSession
+Room 1--N books PrivateSession
+Member 1--N processes Payment
+AdministrativeStaff 1--N processes Payment
+Trainer 1--N availabilitySlots TrainerAvailability
+Equipment 1--N maintenanceReport EquipmentMaintenance
+AdministrativeStaff 1--N maintenanceReport EquipmentMaintenance
