@@ -17,6 +17,7 @@ from models.scheduling import (
     Room,
     PrivateSession,
     ClassSchedule,
+    Trainer,
 )
 from app.member_service import reschedule_private_session
 from app.trainer_service import create_or_update_class
@@ -115,10 +116,24 @@ def update_equipment_status(
     eq.status = new_status
     if notes is not None:
         eq.notes = notes
+
     if room_id is not None:
-        eq.room_id = room_id or None
+        if room_id:
+            room = session.get(Room, room_id)
+            if not room:
+                raise ValueError(f"Room {room_id} not found.")
+            eq.room_id = room.room_id
+        else:
+            eq.room_id = None
+
     if trainer_id is not None:
-        eq.trainer_id = trainer_id or None
+        if trainer_id:
+            trainer = session.get(Trainer, trainer_id)
+            if not trainer:
+                raise ValueError(f"Trainer {trainer_id} not found.")
+            eq.trainer_id = trainer.trainer_id
+        else:
+            eq.trainer_id = None
     session.commit()
     session.refresh(eq)
     return eq
@@ -200,6 +215,7 @@ def record_payment(
     member_id: int,
     amount: float,
     description: str | None = None,
+    private_session_id: int | None = None,
 ) -> Payment:
     """
     Create a payment row for a member.
@@ -216,6 +232,7 @@ def record_payment(
         amount=amount,
         description=description,
         paid_at=datetime.utcnow(),
+        private_session_id=private_session_id,
     )
     session.add(payment)
     session.commit()

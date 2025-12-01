@@ -35,6 +35,38 @@ def init_db() -> None:
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE private_session
+                    ADD COLUMN IF NOT EXISTS price NUMERIC(8,2) DEFAULT 75;
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE payment
+                    ADD COLUMN IF NOT EXISTS private_session_id INTEGER REFERENCES private_session(session_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE billing_item
+                    ADD COLUMN IF NOT EXISTS private_session_id INTEGER UNIQUE REFERENCES private_session(session_id);
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                ALTER TABLE payment
+                    ADD COLUMN IF NOT EXISTS private_session_id INTEGER REFERENCES private_session(session_id);
+                """
+            )
+        )
         # Ensure the health_metric timestamp column always defaults to now()
         conn.execute(
             text(

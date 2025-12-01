@@ -14,9 +14,11 @@ from models.scheduling import (
     TrainerAvailability,
 )
 from models.equipment import Equipment, EquipmentIssue
-from models.payment import Payment
+from models.payment import Payment, BillingItem
 
 from app import init_db
+from app.pricing import DEFAULT_PRIVATE_SESSION_PRICE
+from app.calendar_window import get_booking_now
 
 
 def clear_all_data() -> None:
@@ -30,7 +32,8 @@ def clear_all_data() -> None:
 def seed_demo_data() -> None:
     """Seed the database with a consistent demo data set."""
     clear_all_data()
-    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    now = get_booking_now().replace(minute=0, second=0, microsecond=0)
+    week_start = get_booking_now().replace(hour=0, minute=0, second=0, microsecond=0)
     with get_session() as session:
         # Members
         member_specs = [
@@ -112,10 +115,7 @@ def seed_demo_data() -> None:
 
         session.commit()
 
-        # Private sessions
-        next_monday = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        if next_monday <= now:
-            next_monday += timedelta(weeks=1)
+        # Private sessions anchored to the booking week
 
         private_sessions: list[PrivateSession] = []
         for trainer_index, trainer in enumerate(trainers):
@@ -124,7 +124,7 @@ def seed_demo_data() -> None:
             ).all()
             for idx in range(3):
                 member = members[(trainer_index + idx) % len(members)]
-                day = next_monday + timedelta(days=(trainer_index * 2 + idx) % 5)
+                day = week_start + timedelta(days=(trainer_index * 2 + idx) % 5)
                 start_time = day.replace(hour=9 + idx, minute=0)
                 private_sessions.append(
                     PrivateSession(
@@ -133,10 +133,11 @@ def seed_demo_data() -> None:
                         room_id=trainer_rooms[idx % len(trainer_rooms)].room_id,
                         start_time=start_time,
                         end_time=start_time + timedelta(hours=1),
+                        price=DEFAULT_PRIVATE_SESSION_PRICE,
                     )
                 )
         # two trainers in different rooms but same window to test conflict guarding
-        overlap_start = (next_monday + timedelta(days=6)).replace(hour=15, minute=0)
+        overlap_start = (week_start + timedelta(days=6)).replace(hour=15, minute=0)
         for idx, trainer in enumerate(trainers[:2]):
             trainer_rooms = session.scalars(
                 select(Room).where(Room.primary_trainer_id == trainer.trainer_id)
@@ -149,9 +150,40 @@ def seed_demo_data() -> None:
                     room_id=trainer_rooms[0].room_id,
                     start_time=overlap_start,
                     end_time=overlap_start + timedelta(hours=1),
+                    price=DEFAULT_PRIVATE_SESSION_PRICE,
                 )
             )
         session.add_all(private_sessions)
+        session.flush()
+        trainer_lookup = {trainer.trainer_id: trainer for trainer in trainers}
+        for ps in private_sessions:
+            trainer_obj = trainer_lookup.get(ps.trainer_id)
+            trainer_name = (
+                f"{trainer_obj.first_name} {trainer_obj.last_name}"
+                if trainer_obj
+                else f"Trainer {ps.trainer_id}"
+            )
+            description = f"Private session with {trainer_name} on {ps.start_time.strftime('%b %d %I:%M %p')}"
+            session.add(
+                Payment(
+                    member_id=ps.member_id,
+                    amount=float(ps.price or DEFAULT_PRIVATE_SESSION_PRICE),
+                    description=description,
+                    paid_at=ps.start_time - timedelta(hours=1),
+                    private_session_id=ps.session_id,
+                )
+            )
+            session.add(
+                BillingItem(
+                    member_id=ps.member_id,
+                    private_session_id=ps.session_id,
+                    trainer_id=ps.trainer_id,
+                    amount=float(ps.price or DEFAULT_PRIVATE_SESSION_PRICE),
+                    description=description,
+                    status="paid",
+                    paid_at=ps.start_time - timedelta(hours=1),
+                )
+            )
 
         classes: list[ClassSchedule] = []
         class_keys: set[tuple[int, datetime]] = set()
@@ -160,7 +192,7 @@ def seed_demo_data() -> None:
                 select(Room).where(Room.primary_trainer_id == trainer.trainer_id)
             ).all()
             for idx in range(2):
-                day = next_monday + timedelta(days=(trainer_index * 2 + idx + 1) % 5)
+                day = week_start + timedelta(days=(trainer_index * 2 + idx + 1) % 5)
                 start_time = day.replace(hour=13 + idx, minute=0)
                 key = (trainer.trainer_id, start_time)
                 if key in class_keys:
@@ -236,14 +268,24 @@ def seed_demo_data() -> None:
         ]
         session.add_all(issues)
 
-        # Sample payments
+        # Sample payments + matching billing entries
         for member in members[:3]:
+            paid_at = now - timedelta(days=member.member_id)
+            payment = Payment(
+                member_id=member.member_id,
+                amount=120.0,
+                description="Monthly membership",
+                paid_at=paid_at,
+            )
+            session.add(payment)
+            session.flush()
             session.add(
-                Payment(
+                BillingItem(
                     member_id=member.member_id,
                     amount=120.0,
                     description="Monthly membership",
-                    paid_at=now - timedelta(days=member.member_id),
+                    status="paid",
+                    paid_at=paid_at,
                 )
             )
 
