@@ -111,25 +111,29 @@ contains:diamond
 maintenanceReport:diamond
 registersFor:diamond
 
-Member:-1..N->records-1..N->HealthMetric:
+AdministrativeStaff:-1-processes-0..N- Payment:
 
-Member:-1..N->books-1->PrivateSession:
+AdministrativeStaff:-0..N-maintenanceReport-0..N-EquipmentMaintenance:
 
-Member:-1..N->registersFor-1..N->ClassRegistration:
+Member:-1-records-0..N-HealthMetric:
 
-Member:-1..N->processes-1..N->Payment:
+Member:-1..N-books-1-PrivateSession:
 
-Trainer:-1..N->books-1..N->PrivateSession:
+Member:-0..N-registersFor-0..N-ClassRegistration:
 
-Trainer:-1..N->avalibilitySlots-1..N->TrainerAvailability:
+Member:-1-processes-0..N-Payment:
 
-Trainer:-1..N->teaches-1..N->ClassSchedule:
+Trainer:-1-books-0..N-PrivateSession:
 
-Room:-1..N->books-1..N->PrivateSession:
+Trainer:-1..N-avalibilitySlots-0..N-TrainerAvailability:
 
-Room:-1..N->usesRoom-1..N->ClassSchedule:
+Trainer:-1-teaches-0..N-ClassSchedule:
 
-Room:-1..N->contains-1..N->Equipment:
+Room:-0..1-books-0..N-PrivateSession:
 
-Equipment:-1..N->maintenanceReport-1..N->EquipmentMaintenance:
+Room:-1..N-usesRoom-1..N-ClassSchedule:
+
+Room:-1-contains-0..N-Equipment:
+
+Equipment:-1-maintenanceReport-0..N-EquipmentMaintenance:
 
