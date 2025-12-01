@@ -168,7 +168,7 @@ You have two options for loading realistic fixtures:
 
 ---
 
-# 🖥️ Run the Web UI
+# Run the Web UI
 
 ```bash
 $ python -m app.web_app
