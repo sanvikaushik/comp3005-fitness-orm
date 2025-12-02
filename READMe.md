@@ -136,6 +136,9 @@ Copy the template and set your own credentials (the repo ships with **`.env.exam
 ```bash
 cp .env.example .env
 ```
+*If issues occur*
+```py -m pip install psycopg2-binary```
+
 
 Then edit `.env` with the DB user/password/host for your machine. Leave the original template untouched so teammates can clone without editing tracked files. An example configuration after copying might look like:
 
