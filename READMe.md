@@ -158,7 +158,7 @@ DB_PORT=5432
 Run the init module once the database server is online and `.env` contains your credentials:
 
 ```bash
-$ python -m app.init_db
+python -m app.init_db
 Database tables + view + trigger + index created.
 ```
 
