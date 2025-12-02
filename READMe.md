@@ -117,6 +117,18 @@ py -m pip install -r requirements.txt
 *If issues occur*
 ```python.exe -m pip install --upgrade pip```
 
+*If issues occur*
+```py -m pip install python-dotenv```
+
+*If issues occur*
+```py -m pip install greenlet```
+
+*If issues occur*
+```pip install flask```
+
+*If issues occur*
+```py -m pip install sqlalchemy```
+
 ## 4. Configure your database connection
 
 Copy the template and set your own credentials (the repo ships with **`.env.example`** so clones don't immediately fail):
