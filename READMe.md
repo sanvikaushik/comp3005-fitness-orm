@@ -238,3 +238,15 @@ Confirms correctness of:
 - ORM model mapping  
 
 ---
+
+Viewing the ER_MODEL_DIAGRAM:
+
+Step 1:
+
+Take GitHub code referenced in ER MODEL folder and paste it into Gleek.io
+
+```https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A```
+
+Step 2: 
+
+View Image
