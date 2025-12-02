@@ -198,7 +198,7 @@ You have two options for loading realistic fixtures:
 # Run the Web UI
 
 ```bash
-$ python -m app.web_app
+python -m app.web_app
  * Serving Flask app 'app.web_app'
  * Debug mode: off
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
