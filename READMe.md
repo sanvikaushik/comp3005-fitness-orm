@@ -1,4 +1,5 @@
 # Fitness Club Management System
+*[Demo Video](https://vimeo.com/1142259951?share=copy&fl=sv&fe=ci)*
 **Using Python, SQLAlchemy ORM, Flask UI, and PostgreSQL**
 
 This project implements a complete **Fitness Club Management System** with three user roles:
