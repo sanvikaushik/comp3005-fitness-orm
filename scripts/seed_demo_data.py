@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, time
 
 from sqlalchemy import select
 
-# --- Ensure project root is on PYTHONPATH ---
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT)
 
