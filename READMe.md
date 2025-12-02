@@ -244,8 +244,8 @@ Confirms correctness of:
 
 NOTE: 
 
--The Final Version of the ER DIAGRAM are marked as FINAL VERSION
--Previous Versions are placed in a separate folder
+- The Final Version of the ER DIAGRAM are marked as FINAL VERSION
+- Previous Versions are placed in a separate folder
 
 Step 1:
 
