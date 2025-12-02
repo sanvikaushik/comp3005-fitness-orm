@@ -114,7 +114,8 @@ python3 -m pip install -r requirements.txt
 ```powershell
 py -m pip install -r requirements.txt
 ```
-
+*If issues occur*
+```python.exe -m pip install --upgrade pip```
 
 ## 4. Configure your database connection
 
