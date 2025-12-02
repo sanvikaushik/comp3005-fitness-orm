@@ -241,6 +241,8 @@ Confirms correctness of:
 
 # Viewing the ER MODEL DIAGRAM:
 
+NOTE: The Final Version of the ER DIAGRAM are marked as FINAL VERSION
+
 Step 1:
 
 Take GitHub code referenced in ER MODEL folder and paste it into Gleek.io
