@@ -12,6 +12,8 @@ It uses **SQLAlchemy ORM** for all database interactions, **PostgreSQL** as the 
 
 The system implements **all 12 core operations**, plus a required **View**, **Trigger**, and **Index**.
 
+For the complete ER model, ER-to-relational mapping, and normalization justification, open **`docs/EDF.pdf`**—that extended design file is the canonical reference for the database layer.
+
 ---
 
 # Project Structure
@@ -46,8 +48,19 @@ comp3005-fitness-orm/
 │   ├── test_trainer_service.py
 │   └── test_admin_service.py
 │
-├── er_model/              # ER diagrams, PlantUML exports, screenshots
-├── ER to Relational Mapping/ # Assignment write-up artifacts
+├── docs/                  # Design PDFs and exported diagrams
+│   ├── ERD.pdf            # Quick reference ER diagram export
+│   └── EDF.pdf            # Extended design file: ER model + mapping + normalization
+│
+├── er_model/              # Source ER artifacts + relational mapping worksheets
+│   ├── ER_MODEL_DIAGRAM/  # Gleek source, PlantUML exports, final + draft diagrams
+│   └── ER_MODEL_TO_RELATIONAL_MAPPING/
+│       ├── ER_Mapping.pdf
+│       └── ER to Relational Mapping/   # Worksheet + PlantUML assets
+│
+├── report/
+│   └── Final_Report_COMP3005_A_FW_2025.pdf
+├── report.md              # Markdown summary of the final report
 │
 ├── requirements.txt
 ├── .gitignore
@@ -256,19 +269,14 @@ Confirms correctness of:
 
 ---
 
-# Viewing the ER MODEL DIAGRAM
+# ER Model, Mapping & Normalization Assets
 
-NOTE: 
+- **`docs/EDF.pdf`** consolidates the final ER diagram, the ER-to-relational mapping, and the normalization walkthrough. Use it as the single source of truth during reviews or demos.
+- **`er_model/ER_MODEL_DIAGRAM/`** contains the editable sources: the Gleek diagram code (`ER_MODEL_GLEEK_FINAL_VERSION_CODE`), the exported final PNG (`GLEEK.IO_ER_DIAGRAM_FINAL_VERSION.png`), and the `Previous_Versions_Of_ER_Model` folder with every draft—including both PlantUML iterations and older Gleek renders for historical comparison.
+- **`er_model/ER_MODEL_TO_RELATIONAL_MAPPING/`** separates the PDF deliverable (`ER_Mapping.pdf`) from the working “ER to Relational Mapping” notes so you can trace attribute decisions before regenerating the EDF.
 
-- The Final Version of the ER DIAGRAM are marked as FINAL VERSION
-- Previous Versions are placed in a separate folder
+## Viewing or Editing the Diagram
 
-Step 1:
-
-Take GitHub code referenced in docs/ER_MODEL_GLEEK_FINAL_VERSION_CODE folder and paste it into Gleek.io
-
-```https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A```
-
-Step 2: 
-
-View Image
+1. Start with `docs/EDF.pdf` to review the finalized ER structure, mapping tables, and normalization notes in one place.
+2. For updates, copy the Gleek markup from `er_model/ER_MODEL_DIAGRAM/ER_MODEL_GLEEK_FINAL_VERSION_CODE` into [Gleek.io](https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A) or open the PlantUML sources in `er_model/ER_MODEL_DIAGRAM/Previous_Versions_Of_ER_Model/PlantUML*`.
+3. Export the new final diagram (PNG or PDF), drop it back alongside the existing `GLEEK.IO_ER_DIAGRAM_FINAL_VERSION.png`, and regenerate `docs/EDF.pdf` so the ER model, mapping, and normalization narrative stay in sync.
