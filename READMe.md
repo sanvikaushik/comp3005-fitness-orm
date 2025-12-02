@@ -265,7 +265,7 @@ NOTE:
 
 Step 1:
 
-Take GitHub code referenced in docs/GLEEK.IO_ER_MODEL_CODE_FINALVERSION folder and paste it into Gleek.io
+Take GitHub code referenced in docs/ER_MODEL_GLEEK_FINAL_VERSION_CODE folder and paste it into Gleek.io
 
 ```https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A```
 
