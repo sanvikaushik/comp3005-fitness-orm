@@ -242,7 +242,9 @@ Confirms correctness of:
 
 # Viewing the ER MODEL DIAGRAM:
 
-NOTE: The Final Version of the ER DIAGRAM are marked as FINAL VERSION
+NOTE: 
+-The Final Version of the ER DIAGRAM are marked as FINAL VERSION
+-Previous Versions are placed in a seperate folder
 
 Step 1:
 
