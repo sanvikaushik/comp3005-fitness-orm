@@ -239,7 +239,7 @@ Confirms correctness of:
 
 ---
 
-Viewing the ER_MODEL_DIAGRAM:
+# Viewing the ER MODEL DIAGRAM:
 
 Step 1:
 
