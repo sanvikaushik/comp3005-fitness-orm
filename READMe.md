@@ -60,7 +60,6 @@ comp3005-fitness-orm/
 │
 ├── report/
 │   └── Final_Report_COMP3005_A_FW_2025.pdf
-├── report.md              # Markdown summary of the final report
 │
 ├── requirements.txt
 ├── .gitignore
