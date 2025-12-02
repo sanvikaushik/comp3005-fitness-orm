@@ -330,7 +330,7 @@ def lookup_trainer_members(
         )
     )
 
-    # ✅ use unique() + scalars() when eager-loading collections
+    # use unique() + scalars() when eager-loading collections
     members = list(session.execute(members_stmt).unique().scalars())
 
     results: list[dict] = []

@@ -1,5 +1,3 @@
-# scripts/seed_admin_data.py
-
 import os
 import sys
 
