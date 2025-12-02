@@ -123,7 +123,7 @@ Member:-0..N-registersFor-0..N-ClassRegistration:
 
 Member:-1-processes-0..N-Payment:
 
-Trainer:-1-books-0..N-PrivateSession:
+Trainer:-0..N-books-1-PrivateSession:
 
 Trainer:-1..N-avalibilitySlots-0..N-TrainerAvailability:
 
