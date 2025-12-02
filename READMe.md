@@ -278,5 +278,5 @@ Confirms correctness of:
 ## Viewing or Editing the Diagram
 
 1. Start with `docs/EDF.pdf` to review the finalized ER structure, mapping tables, and normalization notes in one place.
-2. For updates, copy the Gleek markup from `er_model/ER_MODEL_DIAGRAM/ER_MODEL_GLEEK_FINAL_VERSION_CODE` into [Gleek.io](https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A) or open the previous PlantUML sources in `er_model/ER_MODEL_DIAGRAM/Previous_Versions_Of_ER_Model/PlantUML*`.
+2. For updates, copy the Gleek markup from `er_model/ER_MODEL_DIAGRAM/ER_MODEL_GLEEK_FINAL_VERSION_CODE` into [Gleek.io](https://app.gleek.io/diagrams/3iJO4oZHTkWafVaHdnxr5A) or open the previous verions of PlantUML sources in `er_model/ER_MODEL_DIAGRAM/Previous_Versions_Of_ER_Model/PlantUML*`.
 3. Export the new final diagram (PNG or PDF), drop it back alongside the existing `GLEEK.IO_ER_DIAGRAM_FINAL_VERSION.png`, and regenerate `docs/EDF.pdf` so the ER model, mapping, and normalization narrative stay in sync.
